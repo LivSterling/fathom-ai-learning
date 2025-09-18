@@ -28,8 +28,3 @@ next-env.d.ts
 
 # MCPS 
 .cursor/mcp.json
-.cursor/rules/
-.cursor/rules/process-task-list.md
-.cursor/rules/generate-tasks.md
-.cursor/rules/create-prd.md
-.cursor/rules/generate-tasks.md
