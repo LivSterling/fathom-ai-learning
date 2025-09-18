@@ -62,15 +62,15 @@ The application already has:
   - [x] 3.4 Update Supabase client configuration in `lib/supabase.ts` to handle guest user authentication and database operations
   - [x] 3.5 Test database constraints and referential integrity for guest user data relationships
 
-- [ ] 4.0 Account Creation & Authentication Flow
-  - [ ] 4.1 Create signup form component in `components/auth/signup-form.tsx` with email/password fields and validation
-  - [ ] 4.2 Implement API endpoint in `app/api/auth/guest-upgrade/route.ts` for converting guest users to registered accounts
-  - [ ] 4.3 Add Supabase Auth integration for email/password registration while preserving guest session context
-  - [ ] 4.4 Create account merging logic for cases where email already exists in the system
-  - [ ] 4.5 Implement post-registration redirect flow that maintains user context and shows success messaging
+- [x] 4.0 Account Creation & Authentication Flow
+  - [x] 4.1 Create signup form component in `components/auth/signup-form.tsx` with email/password fields and validation
+  - [x] 4.2 Implement API endpoint in `app/api/auth/guest-upgrade/route.ts` for converting guest users to registered accounts
+  - [x] 4.3 Add Supabase Auth integration for email/password registration while preserving guest session context
+  - [x] 4.4 Create account merging logic for cases where email already exists in the system
+  - [x] 4.5 Implement post-registration redirect flow that maintains user context and shows success messaging
 
 - [ ] 5.0 Data Migration & Upgrade System
-  - [ ] 5.1 Build data migration API in `app/api/guest/migrate-data/route.ts` to transfer local storage data to Supabase during upgrade
+  - [x] 5.1 Build data migration API in `app/api/guest/migrate-data/route.ts` to transfer local storage data to Supabase during upgrade
   - [ ] 5.2 Implement data transformation utilities to convert local storage format to database schema format
   - [ ] 5.3 Create conflict resolution system for merging guest data with existing registered user data
   - [ ] 5.4 Build rollback mechanism for failed data migrations to maintain data integrity
