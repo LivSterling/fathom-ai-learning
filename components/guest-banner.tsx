@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
+import { useAuth } from "@/lib/auth/auth-context"
 
 interface GuestBannerProps {
   onUpgrade?: () => void
@@ -10,8 +11,10 @@ interface GuestBannerProps {
 
 export function GuestBanner({ onUpgrade }: GuestBannerProps) {
   const [isVisible, setIsVisible] = useState(true)
+  const { isGuest, isLoading } = useAuth()
 
-  if (!isVisible) return null
+  // Don't show banner if user is authenticated or still loading
+  if (!isVisible || !isGuest || isLoading) return null
 
   return (
     <div className="bg-primary/10 border-b border-primary/20 px-4 py-2">

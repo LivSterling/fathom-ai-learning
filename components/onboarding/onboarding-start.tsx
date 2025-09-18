@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Brain, Sparkles, Target } from "lucide-react"
 
@@ -9,6 +10,11 @@ interface OnboardingStartProps {
 }
 
 export function OnboardingStart({ onStartAsGuest, onSignIn }: OnboardingStartProps) {
+  const router = useRouter()
+
+  const handleSignIn = () => {
+    router.push('/login')
+  }
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -46,7 +52,7 @@ export function OnboardingStart({ onStartAsGuest, onSignIn }: OnboardingStartPro
           <Button onClick={onStartAsGuest} className="w-full" size="lg">
             Start as Guest
           </Button>
-          <Button onClick={onSignIn} variant="outline" className="w-full bg-transparent" size="lg">
+          <Button onClick={handleSignIn} variant="outline" className="w-full bg-transparent" size="lg">
             Sign In
           </Button>
         </div>
