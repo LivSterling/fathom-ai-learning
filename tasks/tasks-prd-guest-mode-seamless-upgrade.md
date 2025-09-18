@@ -55,12 +55,12 @@ The application already has:
   - [x] 2.4 Implement data validation and error handling for corrupted or incomplete local storage data
   - [x] 2.5 Create migration utilities for local storage schema changes and data format updates
 
-- [ ] 3.0 Database Schema & RLS Policy Updates
-  - [ ] 3.1 Create database migration in `migrations/add-guest-support.sql` to add `is_guest`, `upgraded_at`, and `guest_id` columns to profiles table
-  - [ ] 3.2 Update existing RLS policies to support guest users accessing their own data based on user_id
-  - [ ] 3.3 Create new RLS policies for data migration scenarios during guest-to-registered user conversion
-  - [ ] 3.4 Update Supabase client configuration in `lib/supabase.ts` to handle guest user authentication and database operations
-  - [ ] 3.5 Test database constraints and referential integrity for guest user data relationships
+- [x] 3.0 Database Schema & RLS Policy Updates
+  - [x] 3.1 Create database migration in `migrations/add-guest-support.sql` to add `is_guest`, `upgraded_at`, and `guest_id` columns to profiles table
+  - [x] 3.2 Update existing RLS policies to support guest users accessing their own data based on user_id
+  - [x] 3.3 Create new RLS policies for data migration scenarios during guest-to-registered user conversion
+  - [x] 3.4 Update Supabase client configuration in `lib/supabase.ts` to handle guest user authentication and database operations
+  - [x] 3.5 Test database constraints and referential integrity for guest user data relationships
 
 - [ ] 4.0 Account Creation & Authentication Flow
   - [ ] 4.1 Create signup form component in `components/auth/signup-form.tsx` with email/password fields and validation
