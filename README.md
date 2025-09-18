@@ -1,4 +1,4 @@
-# (Name TBD) — AI Learning Platform (MVP)
+# Fathom — AI Learning Platform (MVP)
 
 A simple, fast way to learn any concept: type your goal, get a small plan, talk to an AI tutor, and lock it in with spaced‑repetition. Works great in **Guest Mode** so anyone can try it instantly.
 
