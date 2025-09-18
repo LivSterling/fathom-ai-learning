@@ -1,4 +1,4 @@
-import { supabaseGuestManager } from './supabase'
+import { supabase, supabaseGuestManager } from './supabase'
 
 /**
  * Comprehensive error handling and logging system for migration processes
@@ -176,7 +176,7 @@ export class GuestMigrationLogger {
     })
 
     try {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_sessions')
         .update({
           phase,
@@ -261,7 +261,7 @@ export class GuestMigrationLogger {
     })
 
     try {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_metrics')
         .insert({
           session_id: sessionId,
@@ -287,7 +287,7 @@ export class GuestMigrationLogger {
     limit?: number
   ): Promise<MigrationLogEntry[]> {
     try {
-      let query = supabaseGuestManager.supabase
+      let query = supabase
         .from('guest_migration_logs')
         .select('*')
         .eq('session_id', sessionId)
@@ -321,7 +321,7 @@ export class GuestMigrationLogger {
     level?: LogLevel
   ): Promise<MigrationLogEntry[]> {
     try {
-      let query = supabaseGuestManager.supabase
+      let query = supabase
         .from('guest_migration_logs')
         .select('*')
         .eq('session_id', sessionId)
@@ -388,7 +388,7 @@ export class GuestMigrationLogger {
    */
   async getMigrationStatistics(timeRange?: { from: string; to: string }): Promise<MigrationStatistics> {
     try {
-      let query = supabaseGuestManager.supabase
+      let query = supabase
         .from('guest_migration_sessions')
         .select('*')
 
@@ -404,9 +404,9 @@ export class GuestMigrationLogger {
 
       const stats: MigrationStatistics = {
         total_sessions: sessions?.length || 0,
-        successful_sessions: sessions?.filter(s => s.status === 'completed').length || 0,
-        failed_sessions: sessions?.filter(s => s.status === 'failed').length || 0,
-        rolled_back_sessions: sessions?.filter(s => s.status === 'rolled_back').length || 0,
+        successful_sessions: sessions?.filter((s: any) => s.status === 'completed').length || 0,
+        failed_sessions: sessions?.filter((s: any) => s.status === 'failed').length || 0,
+        rolled_back_sessions: sessions?.filter((s: any) => s.status === 'rolled_back').length || 0,
         average_duration_ms: 0,
         success_rate: 0,
         common_errors: [],
@@ -420,9 +420,9 @@ export class GuestMigrationLogger {
 
       if (sessions && sessions.length > 0) {
         // Calculate averages
-        const completedSessions = sessions.filter(s => s.completed_at)
+        const completedSessions = sessions.filter((s: any) => s.completed_at)
         if (completedSessions.length > 0) {
-          const totalDuration = completedSessions.reduce((sum, session) => {
+          const totalDuration = completedSessions.reduce((sum: any, session: any) => {
             return sum + (new Date(session.completed_at!).getTime() - new Date(session.started_at).getTime())
           }, 0)
           stats.average_duration_ms = totalDuration / completedSessions.length
@@ -487,7 +487,7 @@ export class GuestMigrationLogger {
 
   private async storeLogEntry(logEntry: MigrationLogEntry): Promise<void> {
     try {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_logs')
         .insert(logEntry)
 
@@ -500,7 +500,7 @@ export class GuestMigrationLogger {
 
   private async storeMigrationSession(session: MigrationSession): Promise<void> {
     try {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_sessions')
         .insert({
           id: session.id,
@@ -521,7 +521,7 @@ export class GuestMigrationLogger {
 
   private async getMigrationSession(sessionId: string): Promise<MigrationSession | null> {
     try {
-      const { data, error } = await supabaseGuestManager.supabase
+      const { data, error } = await supabase
         .from('guest_migration_sessions')
         .select('*')
         .eq('id', sessionId)
@@ -550,7 +550,7 @@ export class GuestMigrationLogger {
         [metricName]: (session.metrics[metricName] as number) + increment
       }
 
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_sessions')
         .update({
           metrics: updatedMetrics,
@@ -570,7 +570,7 @@ export class GuestMigrationLogger {
     completedAt: string
   ): Promise<void> {
     try {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_sessions')
         .update({
           status,
@@ -589,7 +589,7 @@ export class GuestMigrationLogger {
     try {
       if (this.sessionLogs.length === 0) return
 
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_logs')
         .insert(this.sessionLogs)
 
@@ -611,7 +611,7 @@ export class GuestMigrationLogger {
         created_at: new Date().toISOString()
       }
 
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_reports')
         .insert(report)
 
@@ -623,7 +623,7 @@ export class GuestMigrationLogger {
 
   private async getCommonErrors(timeRange?: { from: string; to: string }): Promise<CommonError[]> {
     try {
-      let query = supabaseGuestManager.supabase
+      let query = supabase
         .from('guest_migration_logs')
         .select('message, metadata')
         .eq('level', 'error')
@@ -641,7 +641,7 @@ export class GuestMigrationLogger {
       // Group errors by message pattern
       const errorGroups = new Map<string, number>()
       
-      data?.forEach(log => {
+      data?.forEach((log: any) => {
         const errorType = this.extractErrorType(log.message)
         errorGroups.set(errorType, (errorGroups.get(errorType) || 0) + 1)
       })

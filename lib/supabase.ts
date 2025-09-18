@@ -484,11 +484,26 @@ export class SupabaseGuestManager {
     try {
       await this.setGuestContext(guestId)
 
+      // First get current values
+      const { data: currentCard, error: fetchError } = await supabase
+        .from('flashcards')
+        .select('review_count, correct_count')
+        .eq('id', flashcardId)
+        .eq('is_guest_content', true)
+        .eq('guest_owner_id', guestId)
+        .single()
+
+      if (fetchError) {
+        console.error('Failed to fetch current flashcard data:', fetchError)
+        return { success: false, error: fetchError.message }
+      }
+
+      // Then update with incremented values
       const { data, error } = await supabase
         .from('flashcards')
         .update({
-          review_count: supabase.raw('review_count + 1'),
-          correct_count: correct ? supabase.raw('correct_count + 1') : supabase.raw('correct_count'),
+          review_count: (currentCard?.review_count || 0) + 1,
+          correct_count: correct ? (currentCard?.correct_count || 0) + 1 : (currentCard?.correct_count || 0),
           last_reviewed_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })

@@ -7,15 +7,20 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertTriangle, Crown } from "lucide-react"
+import { useGuestLimitEnforcement } from "@/lib/guest-limit-enforcer"
 
 interface PlanWizardProps {
   onComplete: (data: any) => void
+  onUpgradeClick?: () => void
 }
 
 const formats = ["Videos", "Articles", "Interactive", "Books", "Podcasts"]
 const levels = ["Beginner", "Intermediate", "Advanced"]
 
-export function PlanWizard({ onComplete }: PlanWizardProps) {
+export function PlanWizard({ onComplete, onUpgradeClick }: PlanWizardProps) {
+  const { checkLimit, shouldShowWarning, getUpgradeMessage } = useGuestLimitEnforcement()
   const [formData, setFormData] = useState({
     goal: "",
     timeframe: "",
@@ -23,6 +28,10 @@ export function PlanWizard({ onComplete }: PlanWizardProps) {
     level: "",
     preferredFormats: [] as string[],
   })
+
+  const limitCheck = checkLimit('plan')
+  const showWarning = shouldShowWarning('plan')
+  const upgradeMessage = getUpgradeMessage('plan')
 
   const toggleFormat = (format: string) => {
     setFormData((prev) => ({
@@ -35,6 +44,13 @@ export function PlanWizard({ onComplete }: PlanWizardProps) {
 
   const handleSubmit = () => {
     if (formData.goal && formData.timeframe && formData.minutesPerDay && formData.level) {
+      if (!limitCheck.allowed) {
+        // Limit reached, show upgrade prompt instead of creating plan
+        if (onUpgradeClick) {
+          onUpgradeClick()
+        }
+        return
+      }
       onComplete(formData)
     }
   }
@@ -52,6 +68,47 @@ export function PlanWizard({ onComplete }: PlanWizardProps) {
         <h2 className="text-2xl font-bold text-foreground">Create Your Learning Plan</h2>
         <p className="text-muted-foreground">Tell us about your goals and we'll create a personalized curriculum.</p>
       </div>
+
+      {/* Limit warnings and alerts */}
+      {limitCheck.limitReached && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {limitCheck.message}
+            {onUpgradeClick && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="ml-2"
+                onClick={onUpgradeClick}
+              >
+                <Crown className="h-3 w-3 mr-1" />
+                Upgrade Now
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {showWarning && !limitCheck.limitReached && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            {upgradeMessage}
+            {onUpgradeClick && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="ml-2"
+                onClick={onUpgradeClick}
+              >
+                <Crown className="h-3 w-3 mr-1" />
+                Upgrade
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -135,8 +192,13 @@ export function PlanWizard({ onComplete }: PlanWizardProps) {
         </CardContent>
       </Card>
 
-      <Button onClick={handleSubmit} disabled={!isComplete} className="w-full" size="lg">
-        Generate Learning Plan
+      <Button 
+        onClick={handleSubmit} 
+        disabled={!isComplete || limitCheck.limitReached} 
+        className="w-full" 
+        size="lg"
+      >
+        {limitCheck.limitReached ? 'Upgrade to Create Plans' : 'Generate Learning Plan'}
       </Button>
     </div>
   )

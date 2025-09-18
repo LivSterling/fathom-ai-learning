@@ -100,7 +100,7 @@ export class GuestMigrationManager {
           if (taskResult.success) {
             result.migratedItems.push(taskResult.itemName)
           } else {
-            result.errors.push(taskResult.error)
+            result.errors.push(taskResult.error || 'Unknown error')
           }
         } catch (error) {
           result.errors.push(`Migration task failed: ${error}`)
@@ -342,7 +342,7 @@ export class GuestMigrationManager {
       // Restore all data
       Object.entries(backup.data).forEach(([key, value]) => {
         if (value) {
-          localStorage.setItem(key, value)
+          localStorage.setItem(key, value as string)
         } else {
           localStorage.removeItem(key)
         }

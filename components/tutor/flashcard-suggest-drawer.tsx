@@ -4,11 +4,14 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { X, Plus, Check } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { X, Plus, Check, AlertTriangle, Crown } from "lucide-react"
+import { useGuestLimitEnforcement } from "@/lib/guest-limit-enforcer"
 
 interface FlashcardSuggestDrawerProps {
   isOpen: boolean
   onClose: () => void
+  onUpgradeClick?: () => void
 }
 
 const suggestedCards = [
@@ -42,13 +45,36 @@ const suggestedCards = [
   },
 ]
 
-export function FlashcardSuggestDrawer({ isOpen, onClose }: FlashcardSuggestDrawerProps) {
+export function FlashcardSuggestDrawer({ isOpen, onClose, onUpgradeClick }: FlashcardSuggestDrawerProps) {
+  const { checkLimit, shouldShowWarning, getUpgradeMessage } = useGuestLimitEnforcement()
   const [selectedCards, setSelectedCards] = useState<string[]>([])
 
   if (!isOpen) return null
 
+  const limitCheck = checkLimit('flashcard')
+  const showWarning = shouldShowWarning('flashcard')
+  const upgradeMessage = getUpgradeMessage('flashcard')
+  
+  // Calculate how many cards can be added
+  const maxSelectableCards = Math.min(selectedCards.length, limitCheck.remaining)
+  const canAddMoreCards = limitCheck.remaining > 0
+
   const toggleCard = (cardId: string) => {
-    setSelectedCards((prev) => (prev.includes(cardId) ? prev.filter((id) => id !== cardId) : [...prev, cardId]))
+    setSelectedCards((prev) => {
+      if (prev.includes(cardId)) {
+        return prev.filter((id) => id !== cardId)
+      } else {
+        // Check if we can add more cards
+        if (prev.length >= limitCheck.remaining) {
+          // Can't add more, show upgrade prompt
+          if (onUpgradeClick) {
+            onUpgradeClick()
+          }
+          return prev
+        }
+        return [...prev, cardId]
+      }
+    })
   }
 
   const handleAddSelected = () => {
@@ -70,18 +96,72 @@ export function FlashcardSuggestDrawer({ isOpen, onClose }: FlashcardSuggestDraw
           <p className="text-sm text-muted-foreground mt-1">
             AI-generated cards based on this lesson. Select the ones you'd like to add to your deck.
           </p>
+          
+          {/* Limit information */}
+          {limitCheck.remaining < suggestedCards.length && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              You can add {limitCheck.remaining} more flashcard{limitCheck.remaining === 1 ? '' : 's'} ({limitCheck.current}/{limitCheck.max} used)
+            </div>
+          )}
         </div>
+
+        {/* Limit warnings */}
+        {limitCheck.limitReached && (
+          <div className="p-4 border-b">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {limitCheck.message}
+                {onUpgradeClick && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="ml-2"
+                    onClick={onUpgradeClick}
+                  >
+                    <Crown className="h-3 w-3 mr-1" />
+                    Upgrade Now
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {showWarning && !limitCheck.limitReached && (
+          <div className="p-4 border-b">
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {upgradeMessage}
+                {onUpgradeClick && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="ml-2"
+                    onClick={onUpgradeClick}
+                  >
+                    <Crown className="h-3 w-3 mr-1" />
+                    Upgrade
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
 
         <div className="p-4 overflow-y-auto max-h-[60vh] space-y-3">
           {suggestedCards.map((card) => {
             const isSelected = selectedCards.includes(card.id)
+            const canSelectCard = canAddMoreCards || isSelected
             return (
               <Card
                 key={card.id}
-                className={`cursor-pointer transition-all ${
-                  isSelected ? "ring-2 ring-primary bg-primary/5" : "hover:shadow-md"
+                className={`transition-all ${
+                  isSelected ? "ring-2 ring-primary bg-primary/5" : 
+                  canSelectCard ? "cursor-pointer hover:shadow-md" : "opacity-50 cursor-not-allowed"
                 }`}
-                onClick={() => toggleCard(card.id)}
+                onClick={() => canSelectCard && toggleCard(card.id)}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
@@ -94,9 +174,12 @@ export function FlashcardSuggestDrawer({ isOpen, onClose }: FlashcardSuggestDraw
                         variant="ghost"
                         size="sm"
                         className="p-1"
+                        disabled={!canSelectCard}
                         onClick={(e) => {
                           e.stopPropagation()
-                          toggleCard(card.id)
+                          if (canSelectCard) {
+                            toggleCard(card.id)
+                          }
                         }}
                       >
                         <Plus className="w-4 h-4" />
@@ -133,8 +216,12 @@ export function FlashcardSuggestDrawer({ isOpen, onClose }: FlashcardSuggestDraw
             <Button variant="outline" onClick={onClose} className="flex-1 bg-transparent">
               Cancel
             </Button>
-            <Button onClick={handleAddSelected} disabled={selectedCards.length === 0} className="flex-1">
-              Add Selected ({selectedCards.length})
+            <Button 
+              onClick={handleAddSelected} 
+              disabled={selectedCards.length === 0 || limitCheck.limitReached} 
+              className="flex-1"
+            >
+              {limitCheck.limitReached ? 'Upgrade to Add Cards' : `Add Selected (${selectedCards.length})`}
             </Button>
           </div>
         </div>

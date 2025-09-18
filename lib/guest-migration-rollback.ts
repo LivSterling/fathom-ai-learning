@@ -1,4 +1,4 @@
-import { supabaseGuestManager } from './supabase'
+import { supabase, supabaseGuestManager } from './supabase'
 import { GuestUserData } from '@/types/guest'
 import { TransformedMigrationData } from './guest-data-transformer'
 
@@ -187,7 +187,7 @@ export class GuestMigrationRollback {
    */
   async listCheckpoints(guestId: string, userId?: string): Promise<MigrationCheckpoint[]> {
     try {
-      const { data, error } = await supabaseGuestManager.supabase
+      const { data, error } = await supabase
         .from('guest_migration_checkpoints')
         .select('*')
         .eq('guest_id', guestId)
@@ -210,7 +210,7 @@ export class GuestMigrationRollback {
       const cutoffDate = new Date()
       cutoffDate.setDate(cutoffDate.getDate() - olderThanDays)
 
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_checkpoints')
         .delete()
         .lt('created_at', cutoffDate.toISOString())
@@ -229,7 +229,7 @@ export class GuestMigrationRollback {
   private async backupUserDatabaseState(userId: string): Promise<DatabaseBackup> {
     try {
       // Backup curricula
-      const { data: curricula, error: curriculaError } = await supabaseGuestManager.supabase
+      const { data: curricula, error: curriculaError } = await supabase
         .from('curricula')
         .select(`
           *,
@@ -243,7 +243,7 @@ export class GuestMigrationRollback {
       if (curriculaError) throw curriculaError
 
       // Backup flashcards
-      const { data: flashcards, error: flashcardsError } = await supabaseGuestManager.supabase
+      const { data: flashcards, error: flashcardsError } = await supabase
         .from('flashcards')
         .select('*')
         .eq('user_id', userId)
@@ -251,7 +251,7 @@ export class GuestMigrationRollback {
       if (flashcardsError) throw flashcardsError
 
       // Backup progress
-      const { data: progress, error: progressError } = await supabaseGuestManager.supabase
+      const { data: progress, error: progressError } = await supabase
         .from('user_progress')
         .select('*')
         .eq('user_id', userId)
@@ -260,7 +260,7 @@ export class GuestMigrationRollback {
       if (progressError && progressError.code !== 'PGRST116') throw progressError
 
       // Backup preferences
-      const { data: preferences, error: preferencesError } = await supabaseGuestManager.supabase
+      const { data: preferences, error: preferencesError } = await supabase
         .from('user_preferences')
         .select('*')
         .eq('user_id', userId)
@@ -301,7 +301,7 @@ export class GuestMigrationRollback {
 
   private async storeCheckpoint(checkpoint: MigrationCheckpoint): Promise<void> {
     try {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_checkpoints')
         .insert({
           id: checkpoint.id,
@@ -323,7 +323,7 @@ export class GuestMigrationRollback {
   private async retrieveCheckpoint(checkpointId: string): Promise<MigrationCheckpoint | null> {
     try {
       // Try database first
-      const { data, error } = await supabaseGuestManager.supabase
+      const { data, error } = await supabase
         .from('guest_migration_checkpoints')
         .select('*')
         .eq('id', checkpointId)
@@ -500,14 +500,14 @@ export class GuestMigrationRollback {
 
   private async restoreCurricula(curricula: any[], userId: string): Promise<void> {
     // Delete current curricula
-    await supabaseGuestManager.supabase
+    await supabase
       .from('curricula')
       .delete()
       .eq('user_id', userId)
 
     // Restore from backup
     if (curricula.length > 0) {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('curricula')
         .insert(curricula.map(c => ({ ...c, user_id: userId })))
 
@@ -517,14 +517,14 @@ export class GuestMigrationRollback {
 
   private async restoreFlashcards(flashcards: any[], userId: string): Promise<void> {
     // Delete current flashcards
-    await supabaseGuestManager.supabase
+    await supabase
       .from('flashcards')
       .delete()
       .eq('user_id', userId)
 
     // Restore from backup
     if (flashcards.length > 0) {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('flashcards')
         .insert(flashcards.map(f => ({ ...f, user_id: userId })))
 
@@ -533,7 +533,7 @@ export class GuestMigrationRollback {
   }
 
   private async restoreProgress(progress: any, userId: string): Promise<void> {
-    const { error } = await supabaseGuestManager.supabase
+    const { error } = await supabase
       .from('user_progress')
       .upsert({ ...progress, user_id: userId })
 
@@ -541,7 +541,7 @@ export class GuestMigrationRollback {
   }
 
   private async restorePreferences(preferences: any, userId: string): Promise<void> {
-    const { error } = await supabaseGuestManager.supabase
+    const { error } = await supabase
       .from('user_preferences')
       .upsert({ ...preferences, user_id: userId })
 
@@ -567,7 +567,7 @@ export class GuestMigrationRollback {
     // Clean up any partially migrated data
     if (partialData.migratedCurricula) {
       const curriculaIds = partialData.migratedCurricula.map((c: any) => c.id)
-      await supabaseGuestManager.supabase
+      await supabase
         .from('curricula')
         .delete()
         .in('id', curriculaIds)
@@ -575,7 +575,7 @@ export class GuestMigrationRollback {
 
     if (partialData.migratedFlashcards) {
       const flashcardIds = partialData.migratedFlashcards.map((f: any) => f.id)
-      await supabaseGuestManager.supabase
+      await supabase
         .from('flashcards')
         .delete()
         .in('id', flashcardIds)
@@ -593,7 +593,7 @@ export class GuestMigrationRollback {
     reason?: string
   ): Promise<void> {
     try {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_checkpoints')
         .update({
           status,
@@ -623,7 +623,7 @@ export class GuestMigrationRollback {
         created_at: new Date().toISOString()
       }
 
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_audit_log')
         .insert(auditLog)
 
@@ -654,7 +654,7 @@ export class GuestMigrationRollback {
 
   private async cleanupOldCheckpoint(checkpointId: string): Promise<void> {
     try {
-      const { error } = await supabaseGuestManager.supabase
+      const { error } = await supabase
         .from('guest_migration_checkpoints')
         .delete()
         .eq('id', checkpointId)

@@ -1,6 +1,6 @@
 import { GuestUserData, GuestPlan, GuestFlashcard, GuestModule, GuestLesson } from '@/types/guest'
 import { TransformedMigrationData } from './guest-data-transformer'
-import { supabaseGuestManager } from './supabase'
+import { supabase, supabaseGuestManager } from './supabase'
 
 /**
  * Data validation system to ensure 100% successful migration with no data loss
@@ -718,7 +718,7 @@ export class GuestMigrationValidator {
 
   private async getMigratedCurricula(userId: string, guestId: string): Promise<any[]> {
     try {
-      const { data, error } = await supabaseGuestManager.supabase
+      const { data, error } = await supabase
         .from('curricula')
         .select(`
           *,
@@ -740,7 +740,7 @@ export class GuestMigrationValidator {
 
   private async getMigratedFlashcards(userId: string, guestId: string): Promise<any[]> {
     try {
-      const { data, error } = await supabaseGuestManager.supabase
+      const { data, error } = await supabase
         .from('flashcards')
         .select('*')
         .eq('user_id', userId)
@@ -756,7 +756,7 @@ export class GuestMigrationValidator {
 
   private async getMigratedProgress(userId: string, guestId: string): Promise<any> {
     try {
-      const { data, error } = await supabaseGuestManager.supabase
+      const { data, error } = await supabase
         .from('user_progress')
         .select('*')
         .eq('user_id', userId)
@@ -773,7 +773,7 @@ export class GuestMigrationValidator {
 
   private async getMigratedPreferences(userId: string, guestId: string): Promise<any> {
     try {
-      const { data, error } = await supabaseGuestManager.supabase
+      const { data, error } = await supabase
         .from('user_preferences')
         .select('*')
         .eq('user_id', userId)
