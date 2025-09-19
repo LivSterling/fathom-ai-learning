@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { OnboardingStart } from "@/components/onboarding/onboarding-start"
 import { OnboardingDomains } from "@/components/onboarding/onboarding-domains"
 import { OnboardingChoice } from "@/components/onboarding/onboarding-choice"
 import { OnboardingProposedPlan } from "@/components/onboarding/onboarding-proposed-plan"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth/auth-context"
+import { useGuestMode } from "@/hooks/use-guest-mode"
 
 export default function HomePage() {
   const [step, setStep] = useState<"start" | "concept" | "setup" | "proposed">("start")
@@ -14,8 +16,18 @@ export default function HomePage() {
   const [pastedUrl, setPastedUrl] = useState<string | undefined>()
   const [planConfig, setPlanConfig] = useState<any>(null)
   const router = useRouter()
+  const { user, isLoading } = useAuth()
+  const { initializeGuestMode } = useGuestMode()
 
-  const handleStartAsGuest = () => {
+  // Redirect to dashboard if user is already authenticated
+  useEffect(() => {
+    if (!isLoading && user && !user.user_metadata?.is_guest) {
+      router.push('/dashboard')
+    }
+  }, [user, isLoading, router])
+
+  const handleStartAsGuest = async () => {
+    await initializeGuestMode()
     setStep("concept")
   }
 
@@ -47,6 +59,15 @@ export default function HomePage() {
 
   const handleJumpToSession = () => {
     router.push("/tutor")
+  }
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   if (step === "start") {
