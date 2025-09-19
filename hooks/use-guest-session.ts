@@ -8,6 +8,7 @@ import {
   UpgradePromptTrigger 
 } from '@/types/guest'
 import { guestSessionManager } from '@/lib/guest-session'
+import { guestAnalyticsTracker } from '@/lib/analytics/guest-events'
 
 /**
  * React hook for managing guest user state and operations
@@ -19,25 +20,38 @@ export function useGuestSession() {
 
   // Initialize or restore guest session on mount
   useEffect(() => {
-    try {
-      setIsLoading(true)
-      
-      // Try to get existing session
-      let currentSession = guestSessionManager.getCurrentSession()
-      
-      // If no session exists, create a new one
-      if (!currentSession) {
-        currentSession = guestSessionManager.initializeGuestSession()
+    const initializeSession = async () => {
+      try {
+        setIsLoading(true)
+        
+        // Try to get existing session
+        let currentSession = guestSessionManager.getCurrentSession()
+        const isNewSession = !currentSession
+        
+        // If no session exists, create a new one
+        if (!currentSession) {
+          currentSession = guestSessionManager.initializeGuestSession()
+        }
+        
+        setSession(currentSession)
+        setError(null)
+        
+        // Track session start for new sessions
+        if (isNewSession && currentSession) {
+          await guestAnalyticsTracker.trackGuestSessionStart(currentSession.id, {
+            sessionAge: 0,
+            totalSessions: 1
+          })
+        }
+      } catch (err) {
+        console.error('Error initializing guest session:', err)
+        setError('Failed to initialize guest session')
+      } finally {
+        setIsLoading(false)
       }
-      
-      setSession(currentSession)
-      setError(null)
-    } catch (err) {
-      console.error('Error initializing guest session:', err)
-      setError('Failed to initialize guest session')
-    } finally {
-      setIsLoading(false)
     }
+
+    initializeSession()
   }, [])
 
   // Check if user is a guest
@@ -51,13 +65,24 @@ export function useGuestSession() {
   const hasReachedLimits = guestSessionManager.hasReachedLimits()
 
   // Add a new plan
-  const addPlan = useCallback((plan: GuestPlan): boolean => {
+  const addPlan = useCallback(async (plan: GuestPlan): Promise<boolean> => {
     try {
       const success = guestSessionManager.addPlan(plan)
       if (success) {
         // Refresh session to get updated data
         const updatedSession = guestSessionManager.getCurrentSession()
         setSession(updatedSession)
+        
+        // Track content creation
+        if (updatedSession) {
+          await guestAnalyticsTracker.trackContentCreated(updatedSession.id, 'plan', {
+            planId: plan.id,
+            planTitle: plan.title,
+            domain: plan.domain,
+            moduleCount: plan.modules.length,
+            totalLessons: plan.modules.reduce((sum, module) => sum + module.lessons.length, 0)
+          })
+        }
       }
       return success
     } catch (err) {
@@ -68,13 +93,23 @@ export function useGuestSession() {
   }, [])
 
   // Add a new flashcard
-  const addFlashcard = useCallback((flashcard: GuestFlashcard): boolean => {
+  const addFlashcard = useCallback(async (flashcard: GuestFlashcard): Promise<boolean> => {
     try {
       const success = guestSessionManager.addFlashcard(flashcard)
       if (success) {
         // Refresh session to get updated data
         const updatedSession = guestSessionManager.getCurrentSession()
         setSession(updatedSession)
+        
+        // Track content creation
+        if (updatedSession) {
+          await guestAnalyticsTracker.trackContentCreated(updatedSession.id, 'flashcard', {
+            flashcardId: flashcard.id,
+            difficulty: flashcard.difficulty,
+            tags: flashcard.tags,
+            hasReviews: flashcard.reviewCount > 0
+          })
+        }
       }
       return success
     } catch (err) {
@@ -85,13 +120,24 @@ export function useGuestSession() {
   }, [])
 
   // Complete a lesson
-  const completeLesson = useCallback((planId: string, moduleId: string, lessonId: string): boolean => {
+  const completeLesson = useCallback(async (planId: string, moduleId: string, lessonId: string): Promise<boolean> => {
     try {
       const success = guestSessionManager.completeLesson(planId, moduleId, lessonId)
       if (success) {
         // Refresh session to get updated data
         const updatedSession = guestSessionManager.getCurrentSession()
         setSession(updatedSession)
+        
+        // Track lesson completion
+        if (updatedSession) {
+          await guestAnalyticsTracker.trackLearningActivity(updatedSession.id, 'lesson_completed', {
+            planId,
+            moduleId,
+            lessonId,
+            totalCompletedLessons: updatedSession.userData.progress.completedLessons,
+            studyStreak: updatedSession.userData.progress.streak
+          })
+        }
       }
       return success
     } catch (err) {

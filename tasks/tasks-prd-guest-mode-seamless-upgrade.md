@@ -44,6 +44,8 @@ The application already has:
 - `hooks/use-integrated-upgrade-prompts.ts` - Comprehensive hook integrating all upgrade prompt functionality with scheduling, A/B testing, and contextual messaging
 - `lib/upgrade-message-generator.ts` - Contextual upgrade messaging system that highlights relevant benefits based on user's current activity
 - `lib/upgrade-prompt-ab-testing.ts` - A/B testing framework for different upgrade prompt strategies and messaging optimization
+- `lib/analytics/guest-events.ts` - Comprehensive analytics system for tracking guest user conversion funnel events
+- `lib/analytics/performance-monitor.ts` - Performance monitoring system for data migration and upgrade flow optimization
 - `types/guest.ts` - TypeScript type definitions for guest user system
 - `migrations/add-guest-support.sql` - Database migration for guest user schema changes
 
@@ -109,9 +111,9 @@ The application already has:
   - [x] 7.5 Implement A/B testing framework for different upgrade prompt strategies and messaging
   - [x] 7.6 Update existing page components (dashboard, plan, review, library) to integrate upgrade prompts
 
-- [ ] 8.0 Analytics & Event Tracking Integration
-  - [ ] 8.1 Create guest analytics utilities in `lib/analytics/guest-events.ts` for tracking conversion funnel events
-  - [ ] 8.2 Implement event tracking for guest session initiation, content creation, upgrade prompts shown/clicked, and conversion completion
-  - [ ] 8.3 Add performance monitoring for data migration success rates and upgrade flow completion times
-  - [ ] 8.4 Create analytics dashboard integration for tracking guest-to-registered conversion rates and engagement metrics
-  - [ ] 8.5 Implement retention tracking for D7 guest user engagement and behavior analysis
+- [x] 8.0 Analytics & Event Tracking Integration
+  - [x] 8.1 Create guest analytics utilities in `lib/analytics/guest-events.ts` for tracking conversion funnel events
+  - [x] 8.2 Implement event tracking for guest session initiation, content creation, upgrade prompts shown/clicked, and conversion completion
+  - [x] 8.3 Add performance monitoring for data migration success rates and upgrade flow completion times
+  - [x] 8.4 Create analytics dashboard integration for tracking guest-to-registered conversion rates and engagement metrics
+  - [x] 8.5 Implement retention tracking for D7 guest user engagement and behavior analysis

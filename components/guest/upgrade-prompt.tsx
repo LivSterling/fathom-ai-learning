@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useGuestSession } from '@/hooks/use-guest-session'
 import { useGuestLimitEnforcement } from '@/lib/guest-limit-enforcer'
+import { useGuestAnalytics } from '@/lib/analytics/guest-events'
 
 export type UpgradePromptTrigger = 
   | 'first_lesson_complete'
@@ -67,7 +68,8 @@ export function UpgradePrompt({
   const [isVisible, setIsVisible] = useState(false)
   const [isDismissed, setIsDismissed] = useState(false)
   const { session, shouldShowUpgradePrompt, getProgressSummary } = useGuestSession()
-  const { hasReachedLimits, getCurrentLimits, isGuest } = useGuestLimitEnforcement()
+  const { hasReachedLimits, limits, isGuest } = useGuestLimitEnforcement()
+  const { trackUpgradePrompt } = useGuestAnalytics(session?.id)
 
   // Don't show for non-guest users
   if (!isGuest || !session) return null
@@ -77,12 +79,19 @@ export function UpgradePrompt({
     if (!autoShow || isDismissed) return
 
     const shouldShow = shouldShowUpgradePrompt(trigger)
-    setIsVisible(shouldShow)
-  }, [trigger, autoShow, isDismissed, shouldShowUpgradePrompt])
+    if (shouldShow && !isVisible) {
+      setIsVisible(true)
+      // Track that prompt was shown
+      trackUpgradePrompt('shown', {
+        trigger,
+        variant,
+        message: customMessage || getPromptContent().message
+      })
+    }
+  }, [trigger, autoShow, isDismissed, shouldShowUpgradePrompt, isVisible, trackUpgradePrompt, variant, customMessage])
 
   // Get content based on trigger type
   const getPromptContent = (): PromptContent => {
-    const limits = getCurrentLimits()
     const progress = getProgressSummary()
 
     switch (trigger) {
@@ -102,7 +111,7 @@ export function UpgradePrompt({
 
       case 'approaching_limits':
         const approachingType = Object.entries(limits.percentages)
-          .find(([_, percentage]) => percentage >= 80)?.[0] || 'content'
+          .find(([_, percentage]) => (percentage as number) >= 80)?.[0] || 'content'
         return {
           title: 'Almost at your limit',
           message: customMessage || `You're approaching your ${approachingType} limit. Upgrade to continue creating without restrictions.`,
@@ -161,7 +170,7 @@ export function UpgradePrompt({
       case 'engagement_milestone':
         return {
           title: 'You\'re on fire! 🔥',
-          message: customMessage || `${progress.completedLessons} lessons completed! You're clearly serious about learning. Upgrade to accelerate your progress.`,
+          message: customMessage || `${progress?.completedLessons || 0} lessons completed! You're clearly serious about learning. Upgrade to accelerate your progress.`,
           icon: Target,
           urgency: 'low',
           benefits: [
@@ -191,6 +200,14 @@ export function UpgradePrompt({
   const handleDismiss = () => {
     setIsDismissed(true)
     setIsVisible(false)
+    
+    // Track dismissal
+    trackUpgradePrompt('dismissed', {
+      trigger,
+      variant,
+      message: customMessage || getPromptContent().message
+    })
+    
     if (onDismiss) {
       onDismiss()
     }
@@ -201,12 +218,14 @@ export function UpgradePrompt({
   }
 
   const handleUpgrade = () => {
+    // Track upgrade click
+    trackUpgradePrompt('clicked', {
+      trigger,
+      variant,
+      message: customMessage || getPromptContent().message
+    })
+    
     onUpgrade()
-    // Track upgrade click analytics
-    if (session) {
-      // TODO: Add analytics tracking
-      console.log('Upgrade prompt clicked', { trigger, variant })
-    }
   }
 
   if (!isVisible) return null
