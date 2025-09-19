@@ -7,11 +7,14 @@ import { MaterialsList } from "@/components/library/materials-list"
 import { SearchMaterials } from "@/components/library/search-materials"
 import { EmptyLibrary } from "@/components/library/empty-library"
 import { UploadProcessing } from "@/components/library/upload-processing"
+import { UpgradePrompt } from "@/components/guest/upgrade-prompt"
+import { usePageUpgradePrompts } from "@/hooks/use-integrated-upgrade-prompts"
 
 export default function LibraryPage() {
   const [uploadState, setUploadState] = useState<"idle" | "processing" | "complete">("idle")
   const [hasMaterials, setHasMaterials] = useState(false)
   const [showEmptyState, setShowEmptyState] = useState(true)
+  const upgradePrompts = usePageUpgradePrompts('library')
 
   const handleFileUpload = (files: File[]) => {
     setUploadState("processing")
@@ -46,6 +49,19 @@ export default function LibraryPage() {
   return (
     <LayoutWrapper title="Library" onUpgrade={handleUpgrade}>
       <div className="space-y-6 py-4">
+        {/* Upgrade Prompt */}
+        {upgradePrompts.isVisible && upgradePrompts.promptConfig && (
+          <UpgradePrompt
+            trigger={upgradePrompts.promptConfig.trigger}
+            variant={upgradePrompts.promptConfig.variant}
+            onUpgrade={upgradePrompts.onUpgrade}
+            onDismiss={upgradePrompts.onDismiss}
+            customMessage={upgradePrompts.promptConfig.customMessage}
+            showBenefits={upgradePrompts.promptConfig.showBenefits}
+            isDismissible={upgradePrompts.promptConfig.isDismissible}
+          />
+        )}
+
         {/* Upload Section */}
         <UploadDropzone onUpload={handleFileUpload} />
 

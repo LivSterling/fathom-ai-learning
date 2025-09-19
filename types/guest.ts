@@ -72,10 +72,20 @@ export interface GuestUpgradeData {
   userData: GuestUserData
 }
 
-export interface UpgradePromptTrigger {
-  type: 'first_lesson_complete' | 'limit_reached' | 'advanced_feature' | 'time_based'
+export type UpgradePromptTrigger = 
+  | 'first_lesson_complete'
+  | 'approaching_limits' 
+  | 'limit_reached'
+  | 'advanced_feature_access'
+  | 'time_based'
+  | 'engagement_milestone'
+
+export interface UpgradePromptConfig {
+  trigger: UpgradePromptTrigger
   context?: string
   timestamp: string
+  dismissedAt?: string
+  shownCount: number
 }
 
 export interface GuestLimits {

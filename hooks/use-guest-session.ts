@@ -139,30 +139,63 @@ export function useGuestSession() {
   }, [])
 
   // Check if upgrade prompt should be shown
-  const shouldShowUpgradePrompt = useCallback((trigger: UpgradePromptTrigger['type']): boolean => {
+  const shouldShowUpgradePrompt = useCallback((trigger: UpgradePromptTrigger): boolean => {
     if (!session) return false
+
+    // Check if this prompt was recently dismissed
+    const dismissalKey = `upgrade-prompt-dismissed-${trigger}`
+    const dismissedAt = localStorage.getItem(dismissalKey)
+    if (dismissedAt) {
+      const dismissedTime = parseInt(dismissedAt)
+      const hoursSinceDismissal = (Date.now() - dismissedTime) / (1000 * 60 * 60)
+      
+      // Don't show again for different time periods based on trigger
+      const cooldownHours = {
+        'first_lesson_complete': 24, // 1 day
+        'approaching_limits': 4,     // 4 hours
+        'limit_reached': 1,          // 1 hour (more urgent)
+        'advanced_feature_access': 8, // 8 hours
+        'time_based': 48,            // 2 days
+        'engagement_milestone': 12   // 12 hours
+      }
+      
+      if (hoursSinceDismissal < cooldownHours[trigger]) {
+        return false
+      }
+    }
 
     switch (trigger) {
       case 'first_lesson_complete':
         return session.userData.progress.completedLessons === 1
       
+      case 'approaching_limits':
+        // Show when any limit reaches 80%
+        return limits.percentages.maxFlashcards >= 80 || 
+               limits.percentages.maxLessons >= 80 || 
+               limits.percentages.maxPlans >= 80
+      
       case 'limit_reached':
         return hasReachedLimits.any
       
-      case 'advanced_feature':
-        // Show prompt when trying to access features that require account
+      case 'advanced_feature_access':
+        // This will be triggered programmatically when user tries to access premium features
         return true
       
       case 'time_based':
-        // Show prompt after using the app for a certain time
+        // Show prompt after using the app for 3+ days
         const sessionAge = Date.now() - new Date(session.createdAt).getTime()
-        const oneDayMs = 24 * 60 * 60 * 1000
-        return sessionAge > oneDayMs
+        const threeDaysMs = 3 * 24 * 60 * 60 * 1000
+        return sessionAge > threeDaysMs
+      
+      case 'engagement_milestone':
+        // Show after completing 5+ lessons or creating 20+ flashcards
+        return session.userData.progress.completedLessons >= 5 || 
+               session.userData.flashcards.length >= 20
       
       default:
         return false
     }
-  }, [session, hasReachedLimits])
+  }, [session, hasReachedLimits, limits])
 
   // Get user progress summary
   const getProgressSummary = useCallback(() => {

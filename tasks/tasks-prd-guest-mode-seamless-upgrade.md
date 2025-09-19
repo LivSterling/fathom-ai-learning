@@ -39,6 +39,11 @@ The application already has:
 - `components/guest/guest-limit-warning.tsx` - Flexible limit warning component with multiple display variants
 - `components/guest/guest-progress-dashboard.tsx` - Comprehensive progress dashboard with stats and insights
 - `components/guest/guest-limit-reached-modal.tsx` - Modal component for limit-reached blocking with upgrade prompts
+- `components/guest/upgrade-prompt.tsx` - Strategic upgrade prompt component with dismissible banner design and multiple variants
+- `hooks/use-upgrade-prompt-scheduler.ts` - Smart scheduling system to prevent overwhelming users with too frequent upgrade suggestions
+- `hooks/use-integrated-upgrade-prompts.ts` - Comprehensive hook integrating all upgrade prompt functionality with scheduling, A/B testing, and contextual messaging
+- `lib/upgrade-message-generator.ts` - Contextual upgrade messaging system that highlights relevant benefits based on user's current activity
+- `lib/upgrade-prompt-ab-testing.ts` - A/B testing framework for different upgrade prompt strategies and messaging optimization
 - `types/guest.ts` - TypeScript type definitions for guest user system
 - `migrations/add-guest-support.sql` - Database migration for guest user schema changes
 
@@ -96,13 +101,13 @@ The application already has:
   - [x] 6.4 Create visual progress bars and limit warnings throughout the application interface
   - [x] 6.5 Implement limit-reached blocking with upgrade prompts when users hit creation boundaries
 
-- [ ] 7.0 Strategic Upgrade Prompting System
-  - [ ] 7.1 Create upgrade prompt component in `components/guest/upgrade-prompt.tsx` with dismissible banner design
-  - [ ] 7.2 Implement trigger logic for showing prompts after first lesson completion, approaching limits, or accessing advanced features
-  - [ ] 7.3 Add prompt scheduling system to avoid overwhelming users with too frequent upgrade suggestions
-  - [ ] 7.4 Create contextual upgrade messaging that highlights relevant benefits based on user's current activity
-  - [ ] 7.5 Implement A/B testing framework for different upgrade prompt strategies and messaging
-  - [ ] 7.6 Update existing page components (dashboard, plan, review, library) to integrate upgrade prompts
+- [x] 7.0 Strategic Upgrade Prompting System
+  - [x] 7.1 Create upgrade prompt component in `components/guest/upgrade-prompt.tsx` with dismissible banner design
+  - [x] 7.2 Implement trigger logic for showing prompts after first lesson completion, approaching limits, or accessing advanced features
+  - [x] 7.3 Add prompt scheduling system to avoid overwhelming users with too frequent upgrade suggestions
+  - [x] 7.4 Create contextual upgrade messaging that highlights relevant benefits based on user's current activity
+  - [x] 7.5 Implement A/B testing framework for different upgrade prompt strategies and messaging
+  - [x] 7.6 Update existing page components (dashboard, plan, review, library) to integrate upgrade prompts
 
 - [ ] 8.0 Analytics & Event Tracking Integration
   - [ ] 8.1 Create guest analytics utilities in `lib/analytics/guest-events.ts` for tracking conversion funnel events

@@ -5,6 +5,8 @@ import { LayoutWrapper } from "@/components/layout-wrapper"
 import { ReviewStart } from "@/components/review/review-start"
 import { ReviewSession } from "@/components/review/review-session"
 import { ReviewComplete } from "@/components/review/review-complete"
+import { UpgradePrompt } from "@/components/guest/upgrade-prompt"
+import { usePageUpgradePrompts } from "@/hooks/use-integrated-upgrade-prompts"
 import { mockCards } from "@/lib/mock-data"
 
 export default function ReviewPage() {
@@ -18,6 +20,7 @@ export default function ReviewPage() {
     good: 0,
     easy: 0,
   })
+  const upgradePrompts = usePageUpgradePrompts('review')
 
   const handleStartSession = () => {
     setSessionState("active")
@@ -57,16 +60,32 @@ export default function ReviewPage() {
 
   return (
     <LayoutWrapper title="Review" onUpgrade={handleUpgrade}>
-      {sessionState === "start" && <ReviewStart cardsDue={mockCards.length} onStartSession={handleStartSession} />}
-      {sessionState === "active" && (
-        <ReviewSession
-          card={mockCards[currentCardIndex]}
-          currentIndex={currentCardIndex}
-          totalCards={mockCards.length}
-          onGrade={handleCardGraded}
-        />
-      )}
-      {sessionState === "complete" && <ReviewComplete stats={sessionStats} onNewSession={resetSession} />}
+      <div className="space-y-6">
+        {/* Upgrade Prompt - Show after completing sessions */}
+        {sessionState === "complete" && upgradePrompts.isVisible && upgradePrompts.promptConfig && (
+          <UpgradePrompt
+            trigger={upgradePrompts.promptConfig.trigger}
+            variant={upgradePrompts.promptConfig.variant}
+            onUpgrade={upgradePrompts.onUpgrade}
+            onDismiss={upgradePrompts.onDismiss}
+            customMessage={upgradePrompts.promptConfig.customMessage}
+            showBenefits={upgradePrompts.promptConfig.showBenefits}
+            isDismissible={upgradePrompts.promptConfig.isDismissible}
+          />
+        )}
+
+        {/* Review Flow */}
+        {sessionState === "start" && <ReviewStart cardsDue={mockCards.length} onStartSession={handleStartSession} />}
+        {sessionState === "active" && (
+          <ReviewSession
+            card={mockCards[currentCardIndex]}
+            currentIndex={currentCardIndex}
+            totalCards={mockCards.length}
+            onGrade={handleCardGraded}
+          />
+        )}
+        {sessionState === "complete" && <ReviewComplete stats={sessionStats} onNewSession={resetSession} />}
+      </div>
     </LayoutWrapper>
   )
 }
