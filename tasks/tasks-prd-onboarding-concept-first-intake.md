@@ -28,7 +28,7 @@
 
 ## Tasks
 
-- [x] 1.0 Create Enhanced Concept Input Component
+- [x] 1.0 Create Enhanced Concept Input Component ✅ COMPLETED
   - [x] 1.1 Create `components/onboarding/onboarding-concept-intake.tsx` with prominent text input field supporting free-form concept entry
   - [x] 1.2 Implement progressive disclosure pattern - show advanced options (timebox, level, format) only after concept input
   - [x] 1.3 Add placeholder examples in input field (e.g., "React useEffect, cardiac physiology basics, Spanish subjunctive...")
