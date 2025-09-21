@@ -8,17 +8,31 @@ import { WeakTagsList } from "@/components/dashboard/weak-tags-list"
 import { NextLessonCard } from "@/components/dashboard/next-lesson-card"
 import { EmptyDashboard } from "@/components/dashboard/empty-dashboard"
 import { UpgradePrompt } from "@/components/guest/upgrade-prompt"
+import { UpgradeModal } from "@/components/guest/upgrade-modal"
 import { usePageUpgradePrompts } from "@/hooks/use-integrated-upgrade-prompts"
-import { mockStats, mockUser } from "@/lib/mock-data"
+import { useGuestSession } from "@/hooks/use-guest-session"
+import { mockStats } from "@/lib/mock-data"
 
 export default function DashboardPage() {
   const [hasActivePlan, setHasActivePlan] = useState(true)
   const [showEmptyState, setShowEmptyState] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  
   const upgradePrompts = usePageUpgradePrompts('dashboard')
+  const guestSession = useGuestSession()
 
   const handleUpgrade = () => {
-    console.log("Upgrade clicked")
+    setShowUpgradeModal(true)
   }
+
+  const handleUpgradeSuccess = (user: any) => {
+    console.log('Upgrade successful:', user)
+    // Refresh the page to show authenticated state
+    window.location.reload()
+  }
+
+  // Get user name from guest session or fallback
+  const userName = guestSession.session?.userData.name || 'there'
 
   if (showEmptyState) {
     return (
@@ -36,7 +50,7 @@ export default function DashboardPage() {
           <UpgradePrompt
             trigger={upgradePrompts.promptConfig.trigger}
             variant={upgradePrompts.promptConfig.variant}
-            onUpgrade={upgradePrompts.onUpgrade}
+            onUpgrade={handleUpgrade}
             onDismiss={upgradePrompts.onDismiss}
             customMessage={upgradePrompts.promptConfig.customMessage}
             showBenefits={upgradePrompts.promptConfig.showBenefits}
@@ -46,7 +60,7 @@ export default function DashboardPage() {
 
         {/* Welcome Message */}
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-foreground">Welcome back, {mockUser.name}!</h2>
+          <h2 className="text-2xl font-bold text-foreground">Welcome back, {userName}!</h2>
           <p className="text-muted-foreground">Ready to continue your learning journey?</p>
         </div>
 
@@ -72,6 +86,14 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onSuccess={handleUpgradeSuccess}
+        trigger="dashboard"
+      />
     </LayoutWrapper>
   )
 }
