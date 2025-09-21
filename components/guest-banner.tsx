@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
+import { useGuestSession } from "@/hooks/use-guest-session"
+import { supabase } from "@/lib/supabase"
 
 interface GuestBannerProps {
   onUpgrade?: () => void
@@ -10,8 +12,28 @@ interface GuestBannerProps {
 
 export function GuestBanner({ onUpgrade }: GuestBannerProps) {
   const [isVisible, setIsVisible] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { isGuest } = useGuestSession()
 
-  if (!isVisible) return null
+  useEffect(() => {
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthenticated(!!user)
+    }
+
+    checkAuth()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session?.user)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Don't show banner if user is authenticated or not visible
+  if (!isVisible || isAuthenticated || !isGuest) return null
 
   return (
     <div className="bg-primary/10 border-b border-primary/20 px-4 py-2">

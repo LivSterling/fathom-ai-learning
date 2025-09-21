@@ -7,14 +7,81 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Settings, Link, Github, Mail } from "lucide-react"
+import { useGuestSession } from "@/hooks/use-guest-session"
+import { supabase } from "@/lib/supabase"
+import { useEffect } from "react"
 
-export function MoreSettings() {
-  const [isGuest, setIsGuest] = useState(true)
+interface MoreSettingsProps {
+  onUpgrade?: () => void
+}
+
+export function MoreSettings({ onUpgrade }: MoreSettingsProps) {
+  const { session: guestSession } = useGuestSession()
   const [syncCode, setSyncCode] = useState("FTHM-2024-ABCD")
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [userProfile, setUserProfile] = useState<any>(null)
+
+  useEffect(() => {
+    // Check authentication state
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsAuthenticated(!!user)
+      
+      if (user) {
+        // Get user profile from database
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        
+        setUserProfile(profile || { 
+          name: user.user_metadata?.name || user.email?.split('@')[0], 
+          email: user.email 
+        })
+      }
+    }
+
+    checkAuth()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setIsAuthenticated(!!session?.user)
+      
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+        
+        setUserProfile(profile || { 
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0], 
+          email: session.user.email 
+        })
+      } else {
+        setUserProfile(null)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const isGuest = !isAuthenticated
 
   const handleUpgrade = () => {
-    setIsGuest(false)
-    console.log("User upgraded from guest mode")
+    onUpgrade?.()
+  }
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Error signing out:', error)
+    } else {
+      console.log('Signed out successfully')
+      // Optionally redirect or refresh
+      window.location.reload()
+    }
   }
 
   const handleCopySync = () => {
@@ -86,13 +153,18 @@ export function MoreSettings() {
                   <User className="w-6 h-6 text-primary-foreground" />
                 </div>
                 <div>
-                  <h3 className="font-medium">Alex Chen</h3>
-                  <p className="text-sm text-muted-foreground">alex@example.com</p>
+                  <h3 className="font-medium">{userProfile?.name || 'User'}</h3>
+                  <p className="text-sm text-muted-foreground">{userProfile?.email || 'user@example.com'}</p>
                 </div>
               </div>
-              <Button variant="outline" className="w-full bg-transparent">
-                Manage Account
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 bg-transparent">
+                  Manage Account
+                </Button>
+                <Button variant="outline" onClick={handleSignOut} className="flex-1 bg-transparent">
+                  Sign Out
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
