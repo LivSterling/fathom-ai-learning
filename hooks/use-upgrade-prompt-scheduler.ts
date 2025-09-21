@@ -1,244 +1,181 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { UpgradePromptTrigger } from '@/types/guest'
-import { useGuestSession } from './use-guest-session'
 
-interface PromptSchedule {
-  trigger: UpgradePromptTrigger
-  lastShown?: number
-  shownCount: number
-  dismissed?: boolean
-  dismissedAt?: number
-}
-
-interface SchedulerConfig {
-  maxPromptsPerDay: number
-  maxPromptsPerWeek: number
-  cooldownBetweenPrompts: number // minutes
-  respectDismissals: boolean
-}
-
-const DEFAULT_CONFIG: SchedulerConfig = {
-  maxPromptsPerDay: 3,
-  maxPromptsPerWeek: 10,
-  cooldownBetweenPrompts: 30, // 30 minutes between any prompts
-  respectDismissals: true
+interface PromptStats {
+  totalShown: number
+  totalDismissed: number
+  totalClicked: number
+  lastShown: Record<UpgradePromptTrigger, number | null>
+  dismissedCount: Record<UpgradePromptTrigger, number>
 }
 
 /**
- * Hook for managing upgrade prompt scheduling to prevent overwhelming users
- * Implements smart scheduling with cooldowns, frequency limits, and dismissal tracking
+ * Hook for scheduling and managing upgrade prompt frequency
  */
-export function useUpgradePromptScheduler(config: Partial<SchedulerConfig> = {}) {
-  const finalConfig = { ...DEFAULT_CONFIG, ...config }
-  const { session, shouldShowUpgradePrompt } = useGuestSession()
-  const [promptHistory, setPromptHistory] = useState<Record<UpgradePromptTrigger, PromptSchedule>>({} as any)
-  const [lastPromptShown, setLastPromptShown] = useState<number>(0)
-
-  // Load prompt history from localStorage
-  useEffect(() => {
-    if (!session) return
-
-    try {
-      const historyKey = `upgrade-prompt-history-${session.id}`
-      const savedHistory = localStorage.getItem(historyKey)
-      if (savedHistory) {
-        setPromptHistory(JSON.parse(savedHistory))
-      }
-    } catch (error) {
-      console.error('Error loading prompt history:', error)
-    }
-  }, [session])
-
-  // Save prompt history to localStorage
-  const savePromptHistory = useCallback((history: Record<UpgradePromptTrigger, PromptSchedule>) => {
-    if (!session) return
-
-    try {
-      const historyKey = `upgrade-prompt-history-${session.id}`
-      localStorage.setItem(historyKey, JSON.stringify(history))
-      setPromptHistory(history)
-    } catch (error) {
-      console.error('Error saving prompt history:', error)
-    }
-  }, [session])
-
-  // Check if we've hit daily/weekly limits
-  const hasReachedFrequencyLimits = useCallback((): boolean => {
-    const now = Date.now()
-    const oneDayMs = 24 * 60 * 60 * 1000
-    const oneWeekMs = 7 * oneDayMs
-
-    const promptsToday = Object.values(promptHistory).filter(schedule => 
-      schedule.lastShown && (now - schedule.lastShown) < oneDayMs
-    ).length
-
-    const promptsThisWeek = Object.values(promptHistory).filter(schedule => 
-      schedule.lastShown && (now - schedule.lastShown) < oneWeekMs
-    ).length
-
-    return promptsToday >= finalConfig.maxPromptsPerDay || 
-           promptsThisWeek >= finalConfig.maxPromptsPerWeek
-  }, [promptHistory, finalConfig])
-
-  // Check if enough time has passed since last prompt
-  const hasEnoughCooldownPassed = useCallback((): boolean => {
-    const now = Date.now()
-    const cooldownMs = finalConfig.cooldownBetweenPrompts * 60 * 1000
-    return (now - lastPromptShown) >= cooldownMs
-  }, [lastPromptShown, finalConfig.cooldownBetweenPrompts])
-
-  // Check if a specific trigger should show a prompt
-  const shouldShowPrompt = useCallback((trigger: UpgradePromptTrigger): boolean => {
-    // Basic checks
-    if (!session || !shouldShowUpgradePrompt(trigger)) {
-      return false
-    }
-
-    // Check frequency limits
-    if (hasReachedFrequencyLimits()) {
-      return false
-    }
-
-    // Check cooldown between prompts
-    if (!hasEnoughCooldownPassed()) {
-      return false
-    }
-
-    // Check dismissal status for this specific trigger
-    const schedule = promptHistory[trigger]
-    if (schedule && finalConfig.respectDismissals) {
-      // If dismissed, check if enough time has passed based on trigger urgency
-      if (schedule.dismissed && schedule.dismissedAt) {
-        const dismissalCooldowns = {
-          'first_lesson_complete': 24 * 60 * 60 * 1000,    // 1 day
-          'approaching_limits': 4 * 60 * 60 * 1000,        // 4 hours
-          'limit_reached': 60 * 60 * 1000,                 // 1 hour (urgent)
-          'advanced_feature_access': 8 * 60 * 60 * 1000,   // 8 hours
-          'time_based': 48 * 60 * 60 * 1000,               // 2 days
-          'engagement_milestone': 12 * 60 * 60 * 1000      // 12 hours
-        }
-
-        const cooldownPeriod = dismissalCooldowns[trigger]
-        const timeSinceDismissal = Date.now() - schedule.dismissedAt
-        
-        if (timeSinceDismissal < cooldownPeriod) {
-          return false
-        }
-      }
-
-      // Reduce frequency for triggers that have been shown multiple times
-      if (schedule.shownCount >= 3) {
-        // After 3 shows, only show once per day
-        if (schedule.lastShown && (Date.now() - schedule.lastShown) < 24 * 60 * 60 * 1000) {
-          return false
-        }
+export function useUpgradePromptScheduler() {
+  const [stats, setStats] = useState<PromptStats>(() => {
+    // Load from localStorage on init
+    const saved = localStorage.getItem('upgrade-prompt-stats')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch {
+        // If parsing fails, use default
       }
     }
-
-    return true
-  }, [session, shouldShowUpgradePrompt, hasReachedFrequencyLimits, hasEnoughCooldownPassed, promptHistory, finalConfig.respectDismissals])
-
-  // Record that a prompt was shown
-  const recordPromptShown = useCallback((trigger: UpgradePromptTrigger) => {
-    const now = Date.now()
-    setLastPromptShown(now)
-
-    const updatedHistory = {
-      ...promptHistory,
-      [trigger]: {
-        trigger,
-        lastShown: now,
-        shownCount: (promptHistory[trigger]?.shownCount || 0) + 1,
-        dismissed: false
-      }
-    }
-
-    savePromptHistory(updatedHistory)
-  }, [promptHistory, savePromptHistory])
-
-  // Record that a prompt was dismissed
-  const recordPromptDismissed = useCallback((trigger: UpgradePromptTrigger) => {
-    const now = Date.now()
     
-    const updatedHistory = {
-      ...promptHistory,
-      [trigger]: {
-        ...promptHistory[trigger],
-        trigger,
-        dismissed: true,
-        dismissedAt: now
+    return {
+      totalShown: 0,
+      totalDismissed: 0,
+      totalClicked: 0,
+      lastShown: {
+        'first_lesson_complete': null,
+        'approaching_limits': null,
+        'limit_reached': null,
+        'advanced_feature_access': null,
+        'time_based': null,
+        'engagement_milestone': null
+      },
+      dismissedCount: {
+        'first_lesson_complete': 0,
+        'approaching_limits': 0,
+        'limit_reached': 0,
+        'advanced_feature_access': 0,
+        'time_based': 0,
+        'engagement_milestone': 0
       }
     }
+  })
 
-    savePromptHistory(updatedHistory)
-  }, [promptHistory, savePromptHistory])
+  // Save stats to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('upgrade-prompt-stats', JSON.stringify(stats))
+  }, [stats])
 
-  // Get the next best prompt to show (prioritized)
+  // Check if we should show a prompt based on frequency limits
+  const shouldShowPrompt = useCallback((trigger: UpgradePromptTrigger): boolean => {
+    const now = Date.now()
+    const lastShown = stats.lastShown[trigger]
+    const dismissedCount = stats.dismissedCount[trigger]
+    
+    // Don't show if dismissed too many times
+    if (dismissedCount >= 3) return false
+    
+    // Different cooldown periods based on trigger type
+    const cooldownMs = {
+      'first_lesson_complete': 24 * 60 * 60 * 1000,  // 24 hours
+      'approaching_limits': 4 * 60 * 60 * 1000,      // 4 hours
+      'limit_reached': 1 * 60 * 60 * 1000,           // 1 hour
+      'advanced_feature_access': 8 * 60 * 60 * 1000, // 8 hours
+      'time_based': 48 * 60 * 60 * 1000,             // 48 hours
+      'engagement_milestone': 12 * 60 * 60 * 1000    // 12 hours
+    }
+    
+    if (lastShown && (now - lastShown) < cooldownMs[trigger]) {
+      return false
+    }
+    
+    return true
+  }, [stats])
+
+  // Get the next prompt that should be shown
   const getNextPrompt = useCallback((): UpgradePromptTrigger | null => {
-    // Priority order (high to low urgency)
-    const triggerPriority: UpgradePromptTrigger[] = [
+    // Priority order for prompts
+    const triggers: UpgradePromptTrigger[] = [
       'limit_reached',
-      'approaching_limits',
-      'advanced_feature_access',
+      'approaching_limits', 
       'first_lesson_complete',
       'engagement_milestone',
+      'advanced_feature_access',
       'time_based'
     ]
-
-    for (const trigger of triggerPriority) {
+    
+    for (const trigger of triggers) {
       if (shouldShowPrompt(trigger)) {
         return trigger
       }
     }
-
+    
     return null
   }, [shouldShowPrompt])
 
-  // Get statistics about prompt history
-  const getPromptStats = useCallback(() => {
-    const totalShown = Object.values(promptHistory).reduce((sum, schedule) => sum + schedule.shownCount, 0)
-    const totalDismissed = Object.values(promptHistory).filter(schedule => schedule.dismissed).length
-    const dismissalRate = totalShown > 0 ? (totalDismissed / totalShown) * 100 : 0
+  // Record that a prompt was shown
+  const recordPromptShown = useCallback((trigger: UpgradePromptTrigger) => {
+    setStats(prev => ({
+      ...prev,
+      totalShown: prev.totalShown + 1,
+      lastShown: {
+        ...prev.lastShown,
+        [trigger]: Date.now()
+      }
+    }))
+  }, [])
 
-    return {
-      totalShown,
-      totalDismissed,
-      dismissalRate: Math.round(dismissalRate),
-      hasReachedLimits: hasReachedFrequencyLimits(),
-      canShowPrompt: hasEnoughCooldownPassed() && !hasReachedFrequencyLimits()
-    }
-  }, [promptHistory, hasReachedFrequencyLimits, hasEnoughCooldownPassed])
+  // Record that a prompt was dismissed
+  const recordPromptDismissed = useCallback((trigger: UpgradePromptTrigger) => {
+    setStats(prev => ({
+      ...prev,
+      totalDismissed: prev.totalDismissed + 1,
+      dismissedCount: {
+        ...prev.dismissedCount,
+        [trigger]: prev.dismissedCount[trigger] + 1
+      }
+    }))
+  }, [])
 
-  // Reset all prompt history (useful for testing or user preference)
-  const resetPromptHistory = useCallback(() => {
-    if (!session) return
+  // Record that a prompt was clicked
+  const recordPromptClicked = useCallback((trigger: UpgradePromptTrigger) => {
+    setStats(prev => ({
+      ...prev,
+      totalClicked: prev.totalClicked + 1
+    }))
+  }, [])
 
-    try {
-      const historyKey = `upgrade-prompt-history-${session.id}`
-      localStorage.removeItem(historyKey)
-      setPromptHistory({} as any)
-      setLastPromptShown(0)
-    } catch (error) {
-      console.error('Error resetting prompt history:', error)
-    }
-  }, [session])
+  // Check if we can show any prompts (not rate limited)
+  const canShowPrompt = stats.totalShown < 10 // Max 10 prompts per session
+
+  // Check if we've reached frequency limits
+  const hasReachedFrequencyLimits = stats.totalDismissed >= 5 // Stop after 5 dismissals
+
+  // Get prompt statistics
+  const getPromptStats = useCallback(() => stats, [stats])
+
+  // Reset stats (for testing or new sessions)
+  const resetStats = useCallback(() => {
+    setStats({
+      totalShown: 0,
+      totalDismissed: 0,
+      totalClicked: 0,
+      lastShown: {
+        'first_lesson_complete': null,
+        'approaching_limits': null,
+        'limit_reached': null,
+        'advanced_feature_access': null,
+        'time_based': null,
+        'engagement_milestone': null
+      },
+      dismissedCount: {
+        'first_lesson_complete': 0,
+        'approaching_limits': 0,
+        'limit_reached': 0,
+        'advanced_feature_access': 0,
+        'time_based': 0,
+        'engagement_milestone': 0
+      }
+    })
+  }, [])
 
   return {
-    // Core scheduling functions
     shouldShowPrompt,
     getNextPrompt,
     recordPromptShown,
     recordPromptDismissed,
-    
-    // Utility functions
+    recordPromptClicked,
     getPromptStats,
-    resetPromptHistory,
-    
-    // State
-    promptHistory,
-    hasReachedFrequencyLimits: hasReachedFrequencyLimits(),
-    canShowPrompt: hasEnoughCooldownPassed() && !hasReachedFrequencyLimits()
+    canShowPrompt,
+    hasReachedFrequencyLimits,
+    resetStats
   }
 }
