@@ -149,7 +149,8 @@ export function OnboardingProposedPlan({
   onPublish,
   onJumpToSession,
 }: OnboardingProposedPlanProps) {
-  const proposedPlan = generateMockPlan(planConfig)
+  // Use the generated learning plan if available, otherwise fall back to mock plan
+  const proposedPlan = planConfig.learningPlan || generateMockPlan(planConfig)
 
   return (
     <div className="min-h-screen bg-background flex flex-col p-4">

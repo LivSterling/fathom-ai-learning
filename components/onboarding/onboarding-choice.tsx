@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Clock, Calendar, TrendingUp, BookOpen } from "lucide-react"
+import { useConceptIntakeAnalytics } from "@/hooks/use-concept-intake-analytics"
 
 interface OnboardingChoiceProps {
   concept: string
   uploadedFile?: File
   pastedUrl?: string
-  onPlanSetup: (planConfig: PlanConfig) => void
+  onPlanSetup: (planConfig: PlanConfigWithPlan) => void
 }
 
 interface PlanConfig {
@@ -25,14 +26,84 @@ interface PlanConfig {
   pastedUrl?: string
 }
 
+interface PlanConfigWithPlan extends PlanConfig {
+  learningPlan?: any
+  processedFile?: {
+    fileName: string
+    wordCount: number
+    pageCount?: number
+  }
+  processedUrl?: {
+    url: string
+    title: string
+    contentType: string
+    domain: string
+  }
+}
+
 export function OnboardingChoice({ concept, uploadedFile, pastedUrl, onPlanSetup }: OnboardingChoiceProps) {
+  const { trackAPICall } = useConceptIntakeAnalytics()
+  
   const [minutesPerDay, setMinutesPerDay] = useState(30)
   const [weeks, setWeeks] = useState(4)
   const [level, setLevel] = useState("")
   const [format, setFormat] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = () => {
-    if (level && format) {
+  const handleSubmit = async () => {
+    if (!level || !format) return
+    
+    setIsGenerating(true)
+    setError(null)
+    
+    try {
+      // Prepare the request body
+      const requestBody: any = {
+        concept,
+        planConfig: {
+          minutesPerDay,
+          weeks,
+          level,
+          format
+        }
+      }
+      
+      // Add uploaded file if present
+      if (uploadedFile) {
+        const fileContent = await fileToBase64(uploadedFile)
+        requestBody.uploadedFile = {
+          name: uploadedFile.name,
+          size: uploadedFile.size,
+          type: uploadedFile.type,
+          content: fileContent
+        }
+      }
+      
+      // Add pasted URL if present
+      if (pastedUrl) {
+        requestBody.pastedUrl = pastedUrl
+      }
+      
+      // Call the concept processing API with analytics tracking
+      const data = await trackAPICall(async () => {
+        const response = await fetch('/api/concept/process', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error?.message || 'Failed to generate learning plan')
+        }
+        
+        return response.json()
+      }, '/api/concept/process', 'POST')
+      
+      // Pass the complete plan configuration with generated learning plan
       onPlanSetup({
         concept,
         minutesPerDay,
@@ -41,8 +112,32 @@ export function OnboardingChoice({ concept, uploadedFile, pastedUrl, onPlanSetup
         format,
         uploadedFile,
         pastedUrl,
+        learningPlan: data.data.learningPlan,
+        processedFile: data.data.processedFile,
+        processedUrl: data.data.processedUrl,
       })
+      
+    } catch (err) {
+      console.error('Error generating learning plan:', err)
+      setError(err instanceof Error ? err.message : 'Failed to generate learning plan')
+    } finally {
+      setIsGenerating(false)
     }
+  }
+  
+  // Helper function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => {
+        const result = reader.result as string
+        // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+        const base64 = result.split(',')[1]
+        resolve(base64)
+      }
+      reader.onerror = error => reject(error)
+    })
   }
 
   return (
@@ -165,9 +260,27 @@ export function OnboardingChoice({ concept, uploadedFile, pastedUrl, onPlanSetup
         </div>
       </div>
 
-      <div className="pt-6">
-        <Button onClick={handleSubmit} disabled={!level || !format} className="w-full" size="lg">
-          Create Learning Plan
+      <div className="pt-6 space-y-4">
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+        
+        <Button 
+          onClick={handleSubmit} 
+          disabled={!level || !format || isGenerating} 
+          className="w-full" 
+          size="lg"
+        >
+          {isGenerating ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              Generating Learning Plan...
+            </>
+          ) : (
+            'Create Learning Plan'
+          )}
         </Button>
       </div>
     </div>

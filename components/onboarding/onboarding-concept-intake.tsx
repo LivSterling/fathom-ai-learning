@@ -9,6 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Upload, Link, Loader2, Clock, Calendar, TrendingUp, BookOpen, AlertCircle, CheckCircle, Info } from "lucide-react"
+import { ConceptChips, defaultConceptCategories, type ConceptExample } from "@/components/ui/concept-chips"
+import { useConceptIntakeAnalytics, useConceptInputTracking, useFileUploadTracking, useDropOffTracking } from "@/hooks/use-concept-intake-analytics"
+import { conceptValidator, fileValidator, urlValidator } from "@/lib/validation/concept-validation"
+import { errorManager } from "@/lib/error-handling/error-manager"
+import { ConceptIntakeErrorBoundary } from "@/components/error-boundary"
 
 interface OnboardingConceptIntakeProps {
   onConceptSubmitted: (concept: string, uploadedFile?: File, pastedUrl?: string, planConfig?: PlanConfig) => void
@@ -57,7 +62,14 @@ const placeholderExamples = [
 ]
 
 export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: OnboardingConceptIntakeProps) {
+  // Analytics hooks
+  const { trackChipInteraction, trackError, trackAPICall } = useConceptIntakeAnalytics()
+  const { trackInput, resetInputTracking } = useConceptInputTracking(1500)
+  const { trackUploadStart, trackUploadComplete } = useFileUploadTracking()
+  const { trackStepCompletion, trackStepAbandonment } = useDropOffTracking('concept_input')
+
   const [concept, setConcept] = useState("")
+  const [selectedConceptId, setSelectedConceptId] = useState<string>("")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [pastedUrl, setPastedUrl] = useState("")
   const [showMaterialOptions, setShowMaterialOptions] = useState(false)
@@ -93,19 +105,108 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
     }
   }
 
+  const handleConceptSelect = (conceptExample: ConceptExample) => {
+    setConcept(conceptExample.example)
+    setSelectedConceptId(conceptExample.id)
+    
+    // Track chip interaction
+    const category = defaultConceptCategories.find(cat => 
+      cat.examples.some(ex => ex.id === conceptExample.id)
+    )
+    if (category) {
+      trackChipInteraction({
+        chipId: conceptExample.id,
+        chipLabel: conceptExample.label,
+        categoryId: category.id,
+        categoryName: category.name,
+        action: 'click',
+        position: category.examples.findIndex(ex => ex.id === conceptExample.id),
+        timeOnPage: Date.now() - (performance.timing?.navigationStart || Date.now()),
+        previousConcept: concept.length > 0 ? concept : undefined
+      })
+    }
+    
+    // Track concept input from chip selection
+    trackInput(conceptExample.example, 'chip_selection')
+    
+    // Show advanced options after concept is selected
+    if (!showAdvancedOptions) {
+      setTimeout(() => setShowAdvancedOptions(true), 300)
+    }
+  }
+
   const handleConceptChange = (value: string) => {
     setConcept(value)
+    
+    // Validate concept input
+    const validationResult = conceptValidator.validate(value)
+    if (!validationResult.isValid && value.trim().length > 0) {
+      // Show validation errors
+      const errorMessage = validationResult.errors[0]?.message || 'Invalid concept'
+      setProcessingState({
+        isLoading: false,
+        error: errorMessage,
+        type: 'error',
+        progress: undefined
+      })
+    } else if (validationResult.warnings.length > 0 && value.trim().length > 0) {
+      // Show validation warnings
+      const warningMessage = validationResult.warnings[0]?.message || ''
+      setProcessingState({
+        isLoading: false,
+        error: warningMessage,
+        type: 'warning',
+        progress: undefined
+      })
+    } else {
+      // Clear any previous validation errors
+      setProcessingState({
+        isLoading: false,
+        error: null,
+        progress: undefined
+      })
+    }
+    
+    // Clear selected concept ID when user types manually
+    if (selectedConceptId) {
+      setSelectedConceptId("")
+    }
     // Show advanced options when user starts typing a substantial concept
     if (value.trim().length > 10 && !showAdvancedOptions) {
       setTimeout(() => setShowAdvancedOptions(true), 500)
     }
+    
+    // Track concept input with debouncing
+    trackInput(value, 'typing')
   }
 
   const handleContinue = async () => {
     if (!concept.trim()) return
 
+    // Final validation before processing
+    const conceptValidation = conceptValidator.validate(concept)
+    if (!conceptValidation.isValid) {
+      const errorResult = errorManager.handleError(
+        new Error(conceptValidation.errors[0]?.message || 'Invalid concept'),
+        { component: 'OnboardingConceptIntake', userAction: 'concept_validation' }
+      )
+      setProcessingState({
+        isLoading: false,
+        error: errorResult.userMessage,
+        type: 'error',
+        progress: undefined
+      })
+      return
+    }
+
     const totalSteps = 3 + (uploadedFile ? 1 : 0) + (pastedUrl && isValidUrl(pastedUrl) ? 1 : 0)
     let currentStep = 0
+
+    // Set up timeout for the entire process (30 seconds)
+    const timeoutController = new AbortController()
+    const timeoutId = setTimeout(() => {
+      timeoutController.abort()
+    }, 30000)
 
     try {
       // Step 1: Validate concept
@@ -118,6 +219,12 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
         step: currentStep,
         totalSteps
       })
+      
+      // Check for abort signal
+      if (timeoutController.signal.aborted) {
+        throw new Error('Operation timed out')
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 800))
 
       // Step 2: Process file if uploaded
@@ -178,6 +285,9 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
         format
       }
       
+      // Track successful completion
+      trackStepCompletion(100)
+      
       onConceptSubmitted(
         concept.trim(), 
         uploadedFile || undefined, 
@@ -185,17 +295,80 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
         planConfig
       )
     } catch (error) {
+      // Clear timeout
+      clearTimeout(timeoutId)
+      
+      // Handle error with comprehensive error management
+      const errorResult = errorManager.handleError(
+        error instanceof Error ? error : new Error('Unknown error'),
+        { 
+          component: 'OnboardingConceptIntake', 
+          userAction: 'continue_button_click',
+          additionalInfo: { concept: concept.substring(0, 50), hasFile: !!uploadedFile, hasUrl: !!pastedUrl }
+        },
+        {
+          retryable: true,
+          maxRetries: 2,
+          userMessage: error instanceof Error && error.message.includes('timeout') 
+            ? 'Processing is taking longer than expected. Please try again.' 
+            : 'Failed to process concept. Please try again.'
+        }
+      )
+      
+      // Track error
+      trackError({
+        errorType: 'processing',
+        errorCode: 'CONCEPT_PROCESSING_FAILED',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        component: 'OnboardingConceptIntake',
+        userAction: 'continue_button_click',
+        recoverable: true
+      })
+      
       setProcessingState({
         isLoading: false,
-        error: "Failed to process concept. Please try again.",
+        error: errorResult.userMessage,
         type: 'error',
         progress: undefined
       })
+    } finally {
+      // Always clear timeout
+      clearTimeout(timeoutId)
     }
   }
 
   const validateAndSetFile = (file: File) => {
-    // Basic file validation
+    // Comprehensive file validation
+    const validationResult = fileValidator.validate(file)
+    
+    if (!validationResult.isValid) {
+      const errorResult = errorManager.handleFileUploadError(
+        new Error(validationResult.errors[0]?.message || 'Invalid file'),
+        file.name,
+        file.size,
+        { component: 'OnboardingConceptIntake', userAction: 'file_upload_validation' }
+      )
+      
+      setProcessingState({
+        isLoading: false,
+        error: errorResult.userMessage,
+        type: 'error',
+        progress: undefined
+      })
+      return
+    }
+    
+    // Show warnings if any
+    if (validationResult.warnings.length > 0) {
+      setProcessingState({
+        isLoading: false,
+        error: validationResult.warnings[0]?.message || '',
+        type: 'warning',
+        progress: undefined
+      })
+    }
+
+    // Basic file validation (legacy check)
     if (file.size > 10 * 1024 * 1024) { // 10MB limit
       setProcessingState({
         isLoading: false,
@@ -268,7 +441,8 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
   const isProcessing = processingState.isLoading
 
   return (
-    <div className="min-h-screen bg-background flex flex-col p-4 sm:p-6 lg:p-8">
+    <ConceptIntakeErrorBoundary context="OnboardingConceptIntake">
+      <div className="min-h-screen bg-background flex flex-col p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6 sm:mb-8">
         {onBack && (
@@ -306,30 +480,15 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
             </div>
           )}
 
-          {/* Suggestion chips */}
+          {/* Concept chips */}
           <div className="space-y-2 sm:space-y-3">
-            <p className="text-sm text-muted-foreground">Quick suggestions:</p>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              {suggestionChips.map((chip) => (
-                <Badge
-                  key={chip.id}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 px-3 py-2 sm:px-4 sm:py-2 transition-colors touch-manipulation min-h-[36px] text-sm"
-                  onClick={() => !isProcessing && handleSuggestionClick(chip.example)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && !isProcessing) {
-                      e.preventDefault()
-                      handleSuggestionClick(chip.example)
-                    }
-                  }}
-                  aria-label={`Select ${chip.label} example`}
-                >
-                  {chip.label}
-                </Badge>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">Choose from curated examples:</p>
+            <ConceptChips
+              categories={defaultConceptCategories}
+              onConceptSelect={handleConceptSelect}
+              selectedConceptId={selectedConceptId}
+              maxVisibleCategories={2}
+            />
           </div>
         </div>
 
@@ -699,6 +858,7 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
           </p>
         )}
       </div>
-    </div>
+      </div>
+    </ConceptIntakeErrorBoundary>
   )
 }

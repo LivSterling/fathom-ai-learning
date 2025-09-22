@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { OnboardingStart } from "@/components/onboarding/onboarding-start"
-import { OnboardingDomains } from "@/components/onboarding/onboarding-domains"
+import { OnboardingConceptIntake } from "@/components/onboarding/onboarding-concept-intake"
 import { OnboardingChoice } from "@/components/onboarding/onboarding-choice"
 import { OnboardingProposedPlan } from "@/components/onboarding/onboarding-proposed-plan"
 import { UpgradeModal } from "@/components/guest/upgrade-modal"
@@ -30,11 +30,23 @@ export default function HomePage() {
     router.push('/dashboard')
   }
 
-  const handleConceptSubmitted = (conceptText: string, file?: File, url?: string) => {
+  const handleConceptSubmitted = (conceptText: string, file?: File, url?: string, config?: any) => {
     setConcept(conceptText)
     setUploadedFile(file)
     setPastedUrl(url)
-    setStep("setup")
+    
+    // If plan config is provided, skip the setup step and go directly to proposed plan
+    if (config) {
+      setPlanConfig({
+        concept: conceptText,
+        uploadedFile: file,
+        pastedUrl: url,
+        ...config
+      })
+      setStep("proposed")
+    } else {
+      setStep("setup")
+    }
   }
 
   const handlePlanSetup = (config: any) => {
@@ -62,7 +74,7 @@ export default function HomePage() {
       )}
 
       {step === "concept" && (
-        <OnboardingDomains onConceptSubmitted={handleConceptSubmitted} />
+        <OnboardingConceptIntake onConceptSubmitted={handleConceptSubmitted} />
       )}
 
       {step === "setup" && (
