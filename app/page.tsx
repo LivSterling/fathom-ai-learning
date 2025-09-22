@@ -5,6 +5,7 @@ import { OnboardingStart } from "@/components/onboarding/onboarding-start"
 import { OnboardingDomains } from "@/components/onboarding/onboarding-domains"
 import { OnboardingChoice } from "@/components/onboarding/onboarding-choice"
 import { OnboardingProposedPlan } from "@/components/onboarding/onboarding-proposed-plan"
+import { UpgradeModal } from "@/components/guest/upgrade-modal"
 import { useRouter } from "next/navigation"
 
 export default function HomePage() {
@@ -13,6 +14,7 @@ export default function HomePage() {
   const [uploadedFile, setUploadedFile] = useState<File | undefined>()
   const [pastedUrl, setPastedUrl] = useState<string | undefined>()
   const [planConfig, setPlanConfig] = useState<any>(null)
+  const [showSignInModal, setShowSignInModal] = useState(false)
   const router = useRouter()
 
   const handleStartAsGuest = () => {
@@ -20,8 +22,12 @@ export default function HomePage() {
   }
 
   const handleSignIn = () => {
-    // TODO: Implement sign in with Supabase
-    console.log("Sign in clicked")
+    setShowSignInModal(true)
+  }
+
+  const handleSignInSuccess = (user: any) => {
+    console.log('Sign in successful:', user)
+    router.push('/dashboard')
   }
 
   const handleConceptSubmitted = (conceptText: string, file?: File, url?: string) => {
@@ -49,35 +55,40 @@ export default function HomePage() {
     router.push("/tutor")
   }
 
-  if (step === "start") {
-    return <OnboardingStart onStartAsGuest={handleStartAsGuest} onSignIn={handleSignIn} />
-  }
+  return (
+    <>
+      {step === "start" && (
+        <OnboardingStart onStartAsGuest={handleStartAsGuest} onSignIn={handleSignIn} />
+      )}
 
-  if (step === "concept") {
-    return <OnboardingDomains onConceptSubmitted={handleConceptSubmitted} />
-  }
+      {step === "concept" && (
+        <OnboardingDomains onConceptSubmitted={handleConceptSubmitted} />
+      )}
 
-  if (step === "setup") {
-    return (
-      <OnboardingChoice
-        concept={concept}
-        uploadedFile={uploadedFile}
-        pastedUrl={pastedUrl}
-        onPlanSetup={handlePlanSetup}
+      {step === "setup" && (
+        <OnboardingChoice
+          concept={concept}
+          uploadedFile={uploadedFile}
+          pastedUrl={pastedUrl}
+          onPlanSetup={handlePlanSetup}
+        />
+      )}
+
+      {step === "proposed" && (
+        <OnboardingProposedPlan
+          planConfig={planConfig}
+          onEdit={handleEditPlan}
+          onPublish={handlePublishPlan}
+          onJumpToSession={handleJumpToSession}
+        />
+      )}
+
+      <UpgradeModal
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+        onSuccess={handleSignInSuccess}
+        trigger="home-signin"
       />
-    )
-  }
-
-  if (step === "proposed") {
-    return (
-      <OnboardingProposedPlan
-        planConfig={planConfig}
-        onEdit={handleEditPlan}
-        onPublish={handlePublishPlan}
-        onJumpToSession={handleJumpToSession}
-      />
-    )
-  }
-
-  return null
+    </>
+  )
 }

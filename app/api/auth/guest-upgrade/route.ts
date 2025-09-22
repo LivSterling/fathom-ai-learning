@@ -59,14 +59,19 @@ export async function POST(request: NextRequest) {
     console.log('Starting guest upgrade process for:', { email, guestId })
 
     // Step 1: Check if user already exists
-    const { data: existingUser } = await supabaseAdmin.auth.admin.getUserByEmail(email)
+    const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000
+    })
     
-    if (existingUser.user) {
+    const userExists = existingUser.users.find(user => user.email === email)
+    
+    if (userExists) {
       // User exists - we need to merge data
       console.log('User already exists, merging data...')
       
       // Migrate guest data to existing user
-      const migrationResult = await supabaseGuestManager.migrateGuestToUser(guestId, existingUser.user.id)
+      const migrationResult = await supabaseGuestManager.migrateGuestToUser(guestId, userExists.id)
       
       if (!migrationResult.success) {
         console.error('Data migration failed:', migrationResult.error)
@@ -78,7 +83,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        user: existingUser.user,
+        user: userExists,
         merged: true,
         migrationResult: migrationResult.result
       })
@@ -109,18 +114,25 @@ export async function POST(request: NextRequest) {
     const newUser = authData.user
     console.log('User created successfully:', newUser.id)
 
-    // Step 3: Create or update profile
-    const profileResult = await supabaseGuestManager.createGuestProfile(newUser.id, {
-      email,
-      name: name || null,
-      is_guest: false,
-      upgraded_at: new Date().toISOString(),
-      guest_id: guestId
-    })
+    // Step 3: Create profile directly in database
+    console.log('Creating user profile...')
+    
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: newUser.id,
+        email,
+        name: name || null,
+        is_guest: false,
+        upgraded_at: new Date().toISOString(),
+        guest_id: guestId
+      })
 
-    if (!profileResult.success) {
-      console.error('Failed to create profile:', profileResult.error)
-      // Don't fail the whole process, profile can be created later
+    if (profileError) {
+      console.error('Failed to create profile:', profileError)
+      // Continue anyway - profile can be created later via trigger
+    } else {
+      console.log('Profile created successfully')
     }
 
     // Step 4: Migrate guest data if available
@@ -178,14 +190,21 @@ export async function POST(request: NextRequest) {
       // Don't fail the process for tracking errors
     }
 
-    // Step 6: Generate session for immediate login
+    // Step 6: Generate access token for immediate login
+    console.log('Generating access token for immediate login...')
+    
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
+      type: 'signup',
       email,
+      password,
       options: {
         redirectTo: `${request.nextUrl.origin}/dashboard`
       }
     })
+
+    if (sessionError) {
+      console.error('Failed to generate session:', sessionError)
+    }
 
     console.log('Guest upgrade completed successfully')
 
@@ -199,7 +218,8 @@ export async function POST(request: NextRequest) {
       },
       merged: false,
       migrationResult: migrationResult?.result || null,
-      sessionUrl: sessionData?.properties?.action_link || null
+      accessToken: newUser.access_token || null,
+      refreshToken: newUser.refresh_token || null
     })
 
   } catch (error) {

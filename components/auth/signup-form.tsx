@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Mail, Lock, User, CheckCircle } from "lucide-react"
 import { useGuestSession } from "@/hooks/use-guest-session"
+import { supabase } from "@/lib/supabase"
 
 interface SignupFormProps {
   onSuccess?: (user: any) => void
@@ -102,6 +103,19 @@ export function SignupForm({ onSuccess, onCancel, showGuestBenefits = true }: Si
         throw new Error(result.error || 'Failed to create account')
       }
 
+      // Sign in the user with the new credentials
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password
+      })
+
+      if (signInError) {
+        console.error('Failed to sign in after account creation:', signInError)
+        // Still show success, but user will need to sign in manually
+      } else {
+        console.log('User signed in successfully:', signInData.user)
+      }
+
       // Clear guest session after successful upgrade
       clearSession()
       
@@ -111,7 +125,7 @@ export function SignupForm({ onSuccess, onCancel, showGuestBenefits = true }: Si
       // Call success callback after a short delay to show success message
       setTimeout(() => {
         onSuccess?.(result.user)
-      }, 2000)
+      }, 1000)
 
     } catch (err) {
       console.error('Signup error:', err)
