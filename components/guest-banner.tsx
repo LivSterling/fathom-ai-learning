@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { X } from "lucide-react"
-import { useGuestSession } from "@/hooks/use-guest-session"
+import { useSimpleGuestSession } from "@/hooks/use-simple-guest-session"
 import { supabase } from "@/lib/supabase"
 
 interface GuestBannerProps {
@@ -13,7 +13,7 @@ interface GuestBannerProps {
 export function GuestBanner({ onUpgrade }: GuestBannerProps) {
   const [isVisible, setIsVisible] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const { isGuest } = useGuestSession()
+  const { isGuest } = useSimpleGuestSession()
 
   useEffect(() => {
     // Check if user is authenticated

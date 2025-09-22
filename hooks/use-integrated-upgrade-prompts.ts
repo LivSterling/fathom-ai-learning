@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { UpgradePromptTrigger } from '@/types/guest'
-import { useGuestSession } from './use-guest-session'
+import { useSimpleGuestSession } from './use-simple-guest-session'
 import { useUpgradePromptScheduler } from './use-upgrade-prompt-scheduler'
 import { useUpgradePromptABTest } from '@/lib/upgrade-prompt-ab-testing'
 import { upgradeMessageGenerator } from '@/lib/upgrade-message-generator'
@@ -19,7 +19,7 @@ interface UpgradePromptState {
  * Handles scheduling, A/B testing, contextual messaging, and display logic
  */
 export function useIntegratedUpgradePrompts() {
-  const guestSession = useGuestSession()
+  const guestSession = useSimpleGuestSession()
   const scheduler = useUpgradePromptScheduler()
   const [promptState, setPromptState] = useState<UpgradePromptState>({
     isVisible: false,
@@ -175,7 +175,7 @@ export function useIntegratedUpgradePrompts() {
  */
 export function usePageUpgradePrompts(pageType: 'dashboard' | 'library' | 'plan' | 'review' | 'tutor') {
   const integrated = useIntegratedUpgradePrompts()
-  const guestSession = useGuestSession()
+  const guestSession = useSimpleGuestSession()
 
   // Page-specific trigger logic
   useEffect(() => {

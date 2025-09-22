@@ -15,42 +15,47 @@ interface PromptStats {
  * Hook for scheduling and managing upgrade prompt frequency
  */
 export function useUpgradePromptScheduler() {
-  const [stats, setStats] = useState<PromptStats>(() => {
-    // Load from localStorage on init
-    const saved = localStorage.getItem('upgrade-prompt-stats')
-    if (saved) {
-      try {
-        return JSON.parse(saved)
-      } catch {
-        // If parsing fails, use default
-      }
-    }
-    
-    return {
-      totalShown: 0,
-      totalDismissed: 0,
-      totalClicked: 0,
-      lastShown: {
-        'first_lesson_complete': null,
-        'approaching_limits': null,
-        'limit_reached': null,
-        'advanced_feature_access': null,
-        'time_based': null,
-        'engagement_milestone': null
-      },
-      dismissedCount: {
-        'first_lesson_complete': 0,
-        'approaching_limits': 0,
-        'limit_reached': 0,
-        'advanced_feature_access': 0,
-        'time_based': 0,
-        'engagement_milestone': 0
-      }
+  const getDefaultStats = (): PromptStats => ({
+    totalShown: 0,
+    totalDismissed: 0,
+    totalClicked: 0,
+    lastShown: {
+      'first_lesson_complete': null,
+      'approaching_limits': null,
+      'limit_reached': null,
+      'advanced_feature_access': null,
+      'time_based': null,
+      'engagement_milestone': null
+    },
+    dismissedCount: {
+      'first_lesson_complete': 0,
+      'approaching_limits': 0,
+      'limit_reached': 0,
+      'advanced_feature_access': 0,
+      'time_based': 0,
+      'engagement_milestone': 0
     }
   })
 
+  const [stats, setStats] = useState<PromptStats>(getDefaultStats)
+
+  // Load from localStorage after component mounts
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    
+    const saved = localStorage.getItem('upgrade-prompt-stats')
+    if (saved) {
+      try {
+        setStats(JSON.parse(saved))
+      } catch {
+        // If parsing fails, keep default
+      }
+    }
+  }, [])
+
   // Save stats to localStorage whenever they change
   useEffect(() => {
+    if (typeof window === 'undefined') return
     localStorage.setItem('upgrade-prompt-stats', JSON.stringify(stats))
   }, [stats])
 

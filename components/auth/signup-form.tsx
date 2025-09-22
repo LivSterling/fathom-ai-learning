@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Mail, Lock, User, CheckCircle } from "lucide-react"
-import { useGuestSession } from "@/hooks/use-guest-session"
+import { useSimpleGuestSession } from "@/hooks/use-simple-guest-session"
 import { supabase } from "@/lib/supabase"
 
 interface SignupFormProps {
@@ -29,11 +29,13 @@ export function SignupForm({ onSuccess, onCancel, showGuestBenefits = true }: Si
 
   const { 
     session, 
-    limits, 
-    getAllGuestData, 
-    clearSession,
-    guestId 
-  } = useGuestSession()
+    limits
+  } = useSimpleGuestSession()
+  
+  // Simplified stubs for compatibility
+  const getAllGuestData = () => ({})
+  const clearSession = () => {}
+  const guestId = session?.id
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))

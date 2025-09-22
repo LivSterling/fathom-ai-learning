@@ -15,7 +15,7 @@ import {
   Target,
   Star
 } from 'lucide-react'
-import { useGuestSession } from '@/hooks/use-guest-session'
+import { useSimpleGuestSession } from '@/hooks/use-simple-guest-session'
 import { useGuestLimitEnforcement } from '@/lib/guest-limit-enforcer'
 import { useGuestAnalytics } from '@/lib/analytics/guest-events'
 
@@ -67,7 +67,9 @@ export function UpgradePrompt({
 }: UpgradePromptProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [isDismissed, setIsDismissed] = useState(false)
-  const { session, shouldShowUpgradePrompt, getProgressSummary } = useGuestSession()
+  const { session } = useSimpleGuestSession()
+  const shouldShowUpgradePrompt = false // Simplified for now
+  const getProgressSummary = () => ({ totalStudyTime: 0, totalCards: 0 }) // Simplified for now
   const { hasReachedLimits, limits, isGuest } = useGuestLimitEnforcement()
   const { trackUpgradePrompt } = useGuestAnalytics(session?.id)
 

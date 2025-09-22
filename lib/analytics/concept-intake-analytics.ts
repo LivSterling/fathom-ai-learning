@@ -126,8 +126,10 @@ export class ConceptIntakeAnalyticsService implements AnalyticsService {
       this.sendEvents.bind(this)
     )
 
-    // Initialize session tracking
-    this.trackPageView('concept-intake-onboarding')
+    // Initialize session tracking only in browser environment
+    if (typeof window !== 'undefined') {
+      this.trackPageView('concept-intake-onboarding')
+    }
   }
 
   async track(event: ConceptIntakeAnalyticsEvent): Promise<void> {
@@ -143,7 +145,7 @@ export class ConceptIntakeAnalyticsService implements AnalyticsService {
       timestamp: event.timestamp || new Date(),
       sessionId: this.sessionId,
       userId: this.userId,
-      userAgent: navigator.userAgent,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
       device: this.deviceInfo
     }
 
@@ -329,6 +331,17 @@ export class ConceptIntakeAnalyticsService implements AnalyticsService {
   }
 
   private getDeviceInfo(): DeviceInfo {
+    // Return default values for SSR
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      return {
+        type: 'desktop',
+        os: 'Unknown',
+        browser: 'Unknown',
+        screenResolution: '1920x1080',
+        viewportSize: '1920x1080'
+      }
+    }
+
     const userAgent = navigator.userAgent
     const screen = window.screen
     const viewport = {
@@ -346,6 +359,8 @@ export class ConceptIntakeAnalyticsService implements AnalyticsService {
   }
 
   private getDeviceType(): 'mobile' | 'tablet' | 'desktop' {
+    if (typeof window === 'undefined') return 'desktop'
+    
     const width = window.innerWidth
     if (width < 768) return 'mobile'
     if (width < 1024) return 'tablet'
@@ -376,6 +391,7 @@ export class ConceptIntakeAnalyticsService implements AnalyticsService {
 
   private shouldRespectDoNotTrack(): boolean {
     if (!this.config.privacy.respectDoNotTrack) return false
+    if (typeof navigator === 'undefined') return false
     return navigator.doNotTrack === '1'
   }
 

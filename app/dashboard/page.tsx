@@ -1,6 +1,9 @@
 "use client"
 
 import { useState } from "react"
+
+// Force dynamic rendering for pages that use localStorage
+export const dynamic = 'force-dynamic'
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { DashboardStats } from "@/components/dashboard/dashboard-stats"
 import { QuickActions } from "@/components/dashboard/quick-actions"
@@ -10,7 +13,7 @@ import { EmptyDashboard } from "@/components/dashboard/empty-dashboard"
 import { UpgradePrompt } from "@/components/guest/upgrade-prompt"
 import { UpgradeModal } from "@/components/guest/upgrade-modal"
 import { usePageUpgradePrompts } from "@/hooks/use-integrated-upgrade-prompts"
-import { useGuestSession } from "@/hooks/use-guest-session"
+import { useSupabaseGuestSession } from "@/hooks/use-supabase-guest-session"
 import { mockStats } from "@/lib/mock-data"
 
 export default function DashboardPage() {
@@ -19,7 +22,7 @@ export default function DashboardPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   
   const upgradePrompts = usePageUpgradePrompts('dashboard')
-  const guestSession = useGuestSession()
+  const guestSession = useSupabaseGuestSession()
 
   const handleUpgrade = () => {
     setShowUpgradeModal(true)
@@ -28,7 +31,9 @@ export default function DashboardPage() {
   const handleUpgradeSuccess = (user: any) => {
     console.log('Upgrade successful:', user)
     // Refresh the page to show authenticated state
-    window.location.reload()
+    if (typeof window !== 'undefined') {
+      window.location.reload()
+    }
   }
 
   // Get user name from guest session or fallback

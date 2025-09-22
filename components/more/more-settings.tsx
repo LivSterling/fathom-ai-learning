@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Settings, Link, Github, Mail } from "lucide-react"
-import { useGuestSession } from "@/hooks/use-guest-session"
+import { useSupabaseGuestSession } from "@/hooks/use-supabase-guest-session"
 import { supabase } from "@/lib/supabase"
 import { useEffect } from "react"
 
@@ -16,7 +16,7 @@ interface MoreSettingsProps {
 }
 
 export function MoreSettings({ onUpgrade }: MoreSettingsProps) {
-  const { session: guestSession } = useGuestSession()
+  const { session: guestSession } = useSupabaseGuestSession()
   const [syncCode, setSyncCode] = useState("FTHM-2024-ABCD")
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -80,13 +80,17 @@ export function MoreSettings({ onUpgrade }: MoreSettingsProps) {
     } else {
       console.log('Signed out successfully')
       // Optionally redirect or refresh
-      window.location.reload()
+      if (typeof window !== 'undefined') {
+        window.location.reload()
+      }
     }
   }
 
   const handleCopySync = () => {
-    navigator.clipboard.writeText(syncCode)
-    console.log("Sync code copied")
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(syncCode)
+      console.log("Sync code copied")
+    }
   }
 
   return (

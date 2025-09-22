@@ -1,5 +1,8 @@
 "use client"
 
+// Force dynamic rendering for pages that use localStorage
+export const dynamic = 'force-dynamic'
+
 import { useState } from "react"
 import { OnboardingStart } from "@/components/onboarding/onboarding-start"
 import { OnboardingConceptIntake } from "@/components/onboarding/onboarding-concept-intake"

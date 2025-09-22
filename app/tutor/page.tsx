@@ -1,5 +1,8 @@
 "use client"
 
+// Force dynamic rendering for pages that use localStorage
+export const dynamic = 'force-dynamic'
+
 import { useState } from "react"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { TutorChat } from "@/components/tutor/tutor-chat"
