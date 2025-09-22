@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Upload, Link, Loader2, Clock, Calendar, TrendingUp, BookOpen, AlertCircle, CheckCircle, Info } from "lucide-react"
+import { ConceptChips, defaultConceptCategories, type ConceptExample } from "@/components/ui/concept-chips"
 
 interface OnboardingConceptIntakeProps {
   onConceptSubmitted: (concept: string, uploadedFile?: File, pastedUrl?: string, planConfig?: PlanConfig) => void
@@ -58,6 +59,7 @@ const placeholderExamples = [
 
 export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: OnboardingConceptIntakeProps) {
   const [concept, setConcept] = useState("")
+  const [selectedConceptId, setSelectedConceptId] = useState<string>("")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [pastedUrl, setPastedUrl] = useState("")
   const [showMaterialOptions, setShowMaterialOptions] = useState(false)
@@ -93,8 +95,21 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
     }
   }
 
+  const handleConceptSelect = (conceptExample: ConceptExample) => {
+    setConcept(conceptExample.example)
+    setSelectedConceptId(conceptExample.id)
+    // Show advanced options after concept is selected
+    if (!showAdvancedOptions) {
+      setTimeout(() => setShowAdvancedOptions(true), 300)
+    }
+  }
+
   const handleConceptChange = (value: string) => {
     setConcept(value)
+    // Clear selected concept ID when user types manually
+    if (selectedConceptId) {
+      setSelectedConceptId("")
+    }
     // Show advanced options when user starts typing a substantial concept
     if (value.trim().length > 10 && !showAdvancedOptions) {
       setTimeout(() => setShowAdvancedOptions(true), 500)
@@ -306,30 +321,15 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
             </div>
           )}
 
-          {/* Suggestion chips */}
+          {/* Concept chips */}
           <div className="space-y-2 sm:space-y-3">
-            <p className="text-sm text-muted-foreground">Quick suggestions:</p>
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              {suggestionChips.map((chip) => (
-                <Badge
-                  key={chip.id}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 px-3 py-2 sm:px-4 sm:py-2 transition-colors touch-manipulation min-h-[36px] text-sm"
-                  onClick={() => !isProcessing && handleSuggestionClick(chip.example)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && !isProcessing) {
-                      e.preventDefault()
-                      handleSuggestionClick(chip.example)
-                    }
-                  }}
-                  aria-label={`Select ${chip.label} example`}
-                >
-                  {chip.label}
-                </Badge>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">Choose from curated examples:</p>
+            <ConceptChips
+              categories={defaultConceptCategories}
+              onConceptSelect={handleConceptSelect}
+              selectedConceptId={selectedConceptId}
+              maxVisibleCategories={2}
+            />
           </div>
         </div>
 
