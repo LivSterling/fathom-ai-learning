@@ -1,5 +1,9 @@
 # Fathom — AI Learning Platform (MVP)
 
+<img width="421" height="829" alt="image" src="https://github.com/user-attachments/assets/55d4365d-33dc-4b39-8c85-1ad4803c4953" /> 
+
+# [Click here for --> Live Demo](https://fathom-ai-learning-82ovpvx96-livsterlings-projects.vercel.app/)
+
 A simple, fast way to learn any concept: type your goal, get a small plan, talk to an AI tutor, and lock it in with spaced‑repetition. Works great in **Guest Mode** so anyone can try it instantly.
 
 ## Why this exists
@@ -18,6 +22,8 @@ Most people learn faster with a tutor and short, focused practice. This MVP give
 - **Dashboard** → Cards due, streak, study minutes, weakest tags, next lesson CTA.
 
 > Out of scope: social/leaderboards, heavy web crawling, native mobile, OCR for scanned docs.
+
+ <img width="423" height="838" alt="image" src="https://github.com/user-attachments/assets/3a4d8139-813b-4962-a2eb-4ef81364182a" />
 
 ---
 
