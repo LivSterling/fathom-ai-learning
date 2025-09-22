@@ -121,7 +121,7 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
         categoryName: category.name,
         action: 'click',
         position: category.examples.findIndex(ex => ex.id === conceptExample.id),
-        timeOnPage: Date.now() - performance.timing.navigationStart,
+        timeOnPage: Date.now() - (performance.timing?.navigationStart || Date.now()),
         previousConcept: concept.length > 0 ? concept : undefined
       })
     }
