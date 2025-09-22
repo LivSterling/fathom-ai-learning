@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Upload, Link, Loader2, Clock, Calendar, TrendingUp, BookOpen, AlertCircle, CheckCircle, Info } from "lucide-react"
 import { ConceptChips, defaultConceptCategories, type ConceptExample } from "@/components/ui/concept-chips"
+import { useConceptIntakeAnalytics, useConceptInputTracking, useFileUploadTracking, useDropOffTracking } from "@/hooks/use-concept-intake-analytics"
 
 interface OnboardingConceptIntakeProps {
   onConceptSubmitted: (concept: string, uploadedFile?: File, pastedUrl?: string, planConfig?: PlanConfig) => void
@@ -58,6 +59,12 @@ const placeholderExamples = [
 ]
 
 export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: OnboardingConceptIntakeProps) {
+  // Analytics hooks
+  const { trackChipInteraction, trackError, trackAPICall } = useConceptIntakeAnalytics()
+  const { trackInput, resetInputTracking } = useConceptInputTracking(1500)
+  const { trackUploadStart, trackUploadComplete } = useFileUploadTracking()
+  const { trackStepCompletion, trackStepAbandonment } = useDropOffTracking('concept_input')
+
   const [concept, setConcept] = useState("")
   const [selectedConceptId, setSelectedConceptId] = useState<string>("")
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -98,6 +105,27 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
   const handleConceptSelect = (conceptExample: ConceptExample) => {
     setConcept(conceptExample.example)
     setSelectedConceptId(conceptExample.id)
+    
+    // Track chip interaction
+    const category = defaultConceptCategories.find(cat => 
+      cat.examples.some(ex => ex.id === conceptExample.id)
+    )
+    if (category) {
+      trackChipInteraction({
+        chipId: conceptExample.id,
+        chipLabel: conceptExample.label,
+        categoryId: category.id,
+        categoryName: category.name,
+        action: 'click',
+        position: category.examples.findIndex(ex => ex.id === conceptExample.id),
+        timeOnPage: Date.now() - performance.timing.navigationStart,
+        previousConcept: concept.length > 0 ? concept : undefined
+      })
+    }
+    
+    // Track concept input from chip selection
+    trackInput(conceptExample.example, 'chip_selection')
+    
     // Show advanced options after concept is selected
     if (!showAdvancedOptions) {
       setTimeout(() => setShowAdvancedOptions(true), 300)
@@ -114,6 +142,9 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
     if (value.trim().length > 10 && !showAdvancedOptions) {
       setTimeout(() => setShowAdvancedOptions(true), 500)
     }
+    
+    // Track concept input with debouncing
+    trackInput(value, 'typing')
   }
 
   const handleContinue = async () => {
@@ -193,6 +224,9 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
         format
       }
       
+      // Track successful completion
+      trackStepCompletion(100)
+      
       onConceptSubmitted(
         concept.trim(), 
         uploadedFile || undefined, 
@@ -200,6 +234,16 @@ export function OnboardingConceptIntake({ onConceptSubmitted, onBack }: Onboardi
         planConfig
       )
     } catch (error) {
+      // Track error
+      trackError({
+        errorType: 'processing',
+        errorCode: 'CONCEPT_PROCESSING_FAILED',
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        component: 'OnboardingConceptIntake',
+        userAction: 'continue_button_click',
+        recoverable: true
+      })
+      
       setProcessingState({
         isLoading: false,
         error: "Failed to process concept. Please try again.",

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Clock, Calendar, TrendingUp, BookOpen } from "lucide-react"
+import { useConceptIntakeAnalytics } from "@/hooks/use-concept-intake-analytics"
 
 interface OnboardingChoiceProps {
   concept: string
@@ -41,6 +42,8 @@ interface PlanConfigWithPlan extends PlanConfig {
 }
 
 export function OnboardingChoice({ concept, uploadedFile, pastedUrl, onPlanSetup }: OnboardingChoiceProps) {
+  const { trackAPICall } = useConceptIntakeAnalytics()
+  
   const [minutesPerDay, setMinutesPerDay] = useState(30)
   const [weeks, setWeeks] = useState(4)
   const [level, setLevel] = useState("")
@@ -82,21 +85,23 @@ export function OnboardingChoice({ concept, uploadedFile, pastedUrl, onPlanSetup
         requestBody.pastedUrl = pastedUrl
       }
       
-      // Call the concept processing API
-      const response = await fetch('/api/concept/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error?.message || 'Failed to generate learning plan')
-      }
-      
-      const data = await response.json()
+      // Call the concept processing API with analytics tracking
+      const data = await trackAPICall(async () => {
+        const response = await fetch('/api/concept/process', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error?.message || 'Failed to generate learning plan')
+        }
+        
+        return response.json()
+      }, '/api/concept/process', 'POST')
       
       // Pass the complete plan configuration with generated learning plan
       onPlanSetup({

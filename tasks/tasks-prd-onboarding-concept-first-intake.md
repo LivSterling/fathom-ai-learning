@@ -76,14 +76,14 @@
   - [x] 5.7 Ensure <30 second response time requirement with timeout handling
   - [x] 5.8 Write comprehensive API tests covering success cases, validation errors, and edge cases
 
-- [ ] 6.0 Integrate with Existing Onboarding Flow
-  - [ ] 6.1 Update `app/page.tsx` to use new `OnboardingConceptIntake` component instead of `OnboardingDomains`
-  - [ ] 6.2 Ensure seamless data flow from concept intake to `OnboardingChoice` component
-  - [ ] 6.3 Update `OnboardingChoice` component to handle new concept processing data structure
-  - [ ] 6.4 Verify integration with `OnboardingProposedPlan` component works with generated plans
-  - [ ] 6.5 Test complete flow from concept input to proposed plan display
-  - [ ] 6.6 Ensure existing Curriculum Builder Lite integration remains functional
-  - [ ] 6.7 Update any TypeScript interfaces and types for consistent data flow
+- [x] 6.0 Integrate with Existing Onboarding Flow ✅ COMPLETED
+  - [x] 6.1 Update `app/page.tsx` to use new `OnboardingConceptIntake` component instead of `OnboardingDomains`
+  - [x] 6.2 Ensure seamless data flow from concept intake to `OnboardingChoice` component
+  - [x] 6.3 Update `OnboardingChoice` component to handle new concept processing data structure
+  - [x] 6.4 Verify integration with `OnboardingProposedPlan` component works with generated plans
+  - [x] 6.5 Test complete flow from concept input to proposed plan display
+  - [x] 6.6 Ensure existing Curriculum Builder Lite integration remains functional
+  - [x] 6.7 Update any TypeScript interfaces and types for consistent data flow
 
 - [ ] 7.0 Add Analytics & Performance Tracking
   - [ ] 7.1 Create `types/concept-intake.ts` with comprehensive type definitions for analytics events
