@@ -128,10 +128,19 @@ export class URLExtractor {
     try {
       // Add protocol if missing
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        // Check if it has another protocol that we don't support
+        if (url.includes('://')) {
+          throw new Error('Unsupported protocol')
+        }
         url = 'https://' + url
       }
       
       const urlObj = new URL(url)
+      
+      // Only allow HTTP and HTTPS protocols
+      if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+        throw new Error('Unsupported protocol')
+      }
       
       // Additional validation for domain
       if (!urlObj.hostname || urlObj.hostname === 'not-a-url') {

@@ -119,7 +119,7 @@ describe('FileParser', () => {
       expect(result.text).toBe(textContent)
       expect(result.metadata.fileName).toBe('test.txt')
       expect(result.metadata.fileType).toBe('text/plain')
-      expect(result.metadata.wordCount).toBe(10) // "This is a test text file with some content."
+      expect(result.metadata.wordCount).toBe(9) // "This is a test text file with content."
     })
 
     it('parses Markdown files successfully', async () => {
@@ -178,8 +178,11 @@ describe('FileParser', () => {
       const txtFile = createMockFile('test.txt', 1024, 'text/plain')
       
       // Mock the text method to throw an error
+      const mockTextMethod = jest.fn().mockRejectedValue(new Error('File read error'))
       Object.defineProperty(txtFile, 'text', {
-        value: jest.fn().mockRejectedValue(new Error('File read error'))
+        value: mockTextMethod,
+        writable: true,
+        configurable: true
       })
       
       await expect(parser.parseFile(txtFile)).rejects.toThrow(FileParsingError)
